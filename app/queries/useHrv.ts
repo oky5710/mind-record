@@ -1,0 +1,50 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+
+const BASE_URL = "http://localhost:3001";
+
+export interface HrvPayload {
+  examinedAt: string;
+  hospital?: string;
+  memo?: string;
+  mhr?: number;
+  sdnn?: number;
+  rmssd?: number;
+  psi?: number;
+  tp?: number;
+  tpLog?: number;
+  vlf?: number;
+  vlfLog?: number;
+  lf?: number;
+  lfLog?: number;
+  hf?: number;
+  hfLog?: number;
+  lfNorm?: number;
+  hfNorm?: number;
+  lfHfRatio?: number;
+  ectopicBeat?: number;
+  srd?: number;
+  result?: string;
+}
+
+async function createHrv(payload: HrvPayload) {
+  const res = await fetch(`${BASE_URL}/hrv`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "HRV 저장에 실패했습니다");
+  }
+  return res.json();
+}
+
+export function useCreateHrv() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createHrv,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["hrv"] });
+    },
+  });
+}

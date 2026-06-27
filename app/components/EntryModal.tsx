@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import BottomSheet from "./BottomSheet";
 import ExamForm, { type ExamFormData } from "./forms/ExamForm";
+import { useCreateHrv, type HrvPayload } from "@/app/queries/useHrv";
 
 type EntryType = "검사" | "기분" | "이벤트";
 
@@ -22,15 +23,29 @@ function formatDate(date: Date) {
   return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
 }
 
+function buildHrvPayload(data: ExamFormData): HrvPayload {
+  return {
+    examinedAt: new Date(data.examinedAt).toISOString(),
+    ...(data.hospital ? { hospital: data.hospital } : {}),
+    ...(data.memo ? { memo: data.memo } : {}),
+    mhr: data.mhr, sdnn: data.sdnn, rmssd: data.rmssd, psi: data.psi,
+    tp: data.tp, tpLog: data.tpLog, vlf: data.vlf, vlfLog: data.vlfLog,
+    lf: data.lf, lfLog: data.lfLog, hf: data.hf, hfLog: data.hfLog,
+    lfNorm: data.lfNorm, hfNorm: data.hfNorm, lfHfRatio: data.lfHfRatio,
+    ectopicBeat: data.ectopicBeat, srd: data.srd, result: data.result,
+  };
+}
+
 export default function EntryModal({ date, onClose }: Props) {
   const [selected, setSelected] = useState<EntryType | null>(null);
+  const { mutateAsync, isPending, error } = useCreateHrv();
 
   function handleOpenChange(open: boolean) {
     if (!open) onClose();
   }
 
-  function handleExamSubmit(data: ExamFormData) {
-    console.log("검사 저장:", { date, ...data });
+  async function handleExamSubmit(data: ExamFormData) {
+    await mutateAsync(buildHrvPayload(data));
     onClose();
   }
 
@@ -62,7 +77,13 @@ export default function EntryModal({ date, onClose }: Props) {
       ) : (
         <div className="pt-5">
           {selected === "검사" && (
-            <ExamForm onSubmit={handleExamSubmit} onCancel={onClose} />
+            <ExamForm
+              defaultDate={date}
+              onSubmit={handleExamSubmit}
+              onCancel={onClose}
+              isPending={isPending}
+              error={error?.message ?? null}
+            />
           )}
           {selected !== "검사" && (
             <>
