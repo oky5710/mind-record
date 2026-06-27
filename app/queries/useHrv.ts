@@ -11,13 +11,9 @@ export interface HrvPayload {
   rmssd?: number;
   psi?: number;
   tp?: number;
-  tpLog?: number;
   vlf?: number;
-  vlfLog?: number;
   lf?: number;
-  lfLog?: number;
   hf?: number;
-  hfLog?: number;
   lfNorm?: number;
   hfNorm?: number;
   lfHfRatio?: number;

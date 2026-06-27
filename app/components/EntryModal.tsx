@@ -29,8 +29,7 @@ function buildHrvPayload(data: ExamFormData): HrvPayload {
     ...(data.hospital ? { hospital: data.hospital } : {}),
     ...(data.memo ? { memo: data.memo } : {}),
     mhr: data.mhr, sdnn: data.sdnn, rmssd: data.rmssd, psi: data.psi,
-    tp: data.tp, tpLog: data.tpLog, vlf: data.vlf, vlfLog: data.vlfLog,
-    lf: data.lf, lfLog: data.lfLog, hf: data.hf, hfLog: data.hfLog,
+    tp: data.tp, vlf: data.vlf, lf: data.lf, hf: data.hf,
     lfNorm: data.lfNorm, hfNorm: data.hfNorm, lfHfRatio: data.lfHfRatio,
     ectopicBeat: data.ectopicBeat, srd: data.srd, result: data.result,
   };

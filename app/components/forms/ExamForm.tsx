@@ -16,15 +16,11 @@ export type ExamFormData = {
   sdnn: number;
   rmssd: number;
   psi: number;
-  // Frequency Domain Analysis
+  // Frequency Domain Analysis (log값은 자동 계산)
   tp: number;
-  tpLog: number;
   vlf: number;
-  vlfLog: number;
   lf: number;
-  lfLog: number;
   hf: number;
-  hfLog: number;
   lfNorm: number;
   hfNorm: number;
   lfHfRatio: number;
@@ -47,32 +43,35 @@ function toDatetimeLocal(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+function computeLog(v: number): string {
+  return Number.isFinite(v) && v > 0 ? Math.log(v).toFixed(2) : "—";
+}
+
 function NumberField({ label, name, register, errors }: {
   label: string;
   name: keyof ExamFormData;
   register: ReturnType<typeof useForm<ExamFormData>>["register"];
   errors: FieldErrors<ExamFormData>;
 }) {
-  const hasError = !!errors[name];
   return (
     <div className="flex items-center gap-3">
       <Label className="w-28 shrink-0 text-xs text-muted-foreground">{label}</Label>
       <Input
         type="number"
         step="any"
-        className={`h-8 text-sm ${hasError ? "border-destructive" : ""}`}
+        className={`h-8 text-sm ${errors[name] ? "border-destructive" : ""}`}
         {...register(name, { required: true, valueAsNumber: true })}
       />
     </div>
   );
 }
 
-function DualNumberField({ label, name1, name2, register, errors }: {
+function LogNumberField({ label, name, register, errors, currentValue }: {
   label: string;
-  name1: keyof ExamFormData;
-  name2: keyof ExamFormData;
+  name: keyof ExamFormData;
   register: ReturnType<typeof useForm<ExamFormData>>["register"];
   errors: FieldErrors<ExamFormData>;
+  currentValue: number;
 }) {
   return (
     <div className="flex items-center gap-3">
@@ -81,15 +80,12 @@ function DualNumberField({ label, name1, name2, register, errors }: {
         <Input
           type="number"
           step="any"
-          className={`h-8 text-sm ${errors[name1] ? "border-destructive" : ""}`}
-          {...register(name1, { required: true, valueAsNumber: true })}
+          className={`h-8 text-sm ${errors[name] ? "border-destructive" : ""}`}
+          {...register(name, { required: true, valueAsNumber: true })}
         />
-        <Input
-          type="number"
-          step="any"
-          className={`h-8 text-sm ${errors[name2] ? "border-destructive" : ""}`}
-          {...register(name2, { required: true, valueAsNumber: true })}
-        />
+        <div className="h-8 flex items-center justify-end px-3 rounded-md border border-input bg-muted text-sm text-muted-foreground w-24 shrink-0 tabular-nums">
+          {computeLog(currentValue)}
+        </div>
       </div>
     </div>
   );
@@ -108,7 +104,7 @@ export default function ExamForm({ defaultDate, onSubmit, onCancel, isPending, e
   const combinedDate = new Date(defaultDate);
   combinedDate.setHours(now.getHours(), now.getMinutes());
 
-  const { register, handleSubmit, formState: { errors } } = useForm<ExamFormData>({
+  const { register, handleSubmit, watch, formState: { errors } } = useForm<ExamFormData>({
     defaultValues: {
       examinedAt: toDatetimeLocal(combinedDate),
       hospital: "",
@@ -116,6 +112,7 @@ export default function ExamForm({ defaultDate, onSubmit, onCancel, isPending, e
     },
   });
 
+  const [tp, vlf, lf, hf] = watch(["tp", "vlf", "lf", "hf"]);
   const hasErrors = Object.keys(errors).length > 0;
 
   return (
@@ -158,10 +155,10 @@ export default function ExamForm({ defaultDate, onSubmit, onCancel, isPending, e
       <Separator />
 
       <SectionTitle>Frequency Domain Analysis</SectionTitle>
-      <DualNumberField label="TP" name1="tp" name2="tpLog" register={register} errors={errors} />
-      <DualNumberField label="VLF" name1="vlf" name2="vlfLog" register={register} errors={errors} />
-      <DualNumberField label="LF" name1="lf" name2="lfLog" register={register} errors={errors} />
-      <DualNumberField label="HF" name1="hf" name2="hfLog" register={register} errors={errors} />
+      <LogNumberField label="TP" name="tp" register={register} errors={errors} currentValue={tp} />
+      <LogNumberField label="VLF" name="vlf" register={register} errors={errors} currentValue={vlf} />
+      <LogNumberField label="LF" name="lf" register={register} errors={errors} currentValue={lf} />
+      <LogNumberField label="HF" name="hf" register={register} errors={errors} currentValue={hf} />
       <NumberField label="LFNorm" name="lfNorm" register={register} errors={errors} />
       <NumberField label="HFNorm" name="hfNorm" register={register} errors={errors} />
       <NumberField label="LF/HF Ratio" name="lfHfRatio" register={register} errors={errors} />
