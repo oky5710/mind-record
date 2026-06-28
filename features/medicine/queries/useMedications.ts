@@ -16,6 +16,9 @@ export interface DrugItem {
   entpName: string;
   efcyQesitm?: string;
   itemImage?: string;
+  drugShape?: string;
+  colorClass?: string;
+  chart?: string;
 }
 
 export interface DrugSearchResult {
@@ -36,7 +39,7 @@ export function useMedications() {
   });
 }
 
-async function addMedication(body: { name: string; itemSeq?: string; entpName?: string }) {
+async function addMedication(body: { name: string; itemSeq?: string; entpName?: string; itemImage?: string; drugShape?: string; colorClass?: string; chart?: string }) {
   const res = await fetch(`${BASE_URL}/medications`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

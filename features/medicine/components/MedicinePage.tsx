@@ -59,7 +59,7 @@ function DrugSearchSheet({
 
   function handleSelect(item: DrugItem) {
     addMedication(
-      { name: item.itemName, itemSeq: item.itemSeq, entpName: item.entpName },
+      { name: item.itemName, itemSeq: item.itemSeq, entpName: item.entpName, itemImage: item.itemImage, drugShape: item.drugShape, colorClass: item.colorClass, chart: item.chart },
       {
         onSuccess: () => {
           onOpenChange(false);
