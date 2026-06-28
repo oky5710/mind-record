@@ -2,13 +2,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const BASE_URL = "http://localhost:3001";
 
-export type DoseTiming = "MORNING" | "LUNCH" | "DINNER" | "BEDTIME";
+export type DoseTiming = "MORNING" | "LUNCH" | "DINNER" | "BEDTIME" | "AS_NEEDED";
 
 export const DOSE_TIMING_LABELS: Record<DoseTiming, string> = {
   MORNING: "아침",
   LUNCH: "점심",
   DINNER: "저녁",
   BEDTIME: "취침전",
+  AS_NEEDED: "필요시",
 };
 
 export interface Medication {

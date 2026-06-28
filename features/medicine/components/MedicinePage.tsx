@@ -20,7 +20,7 @@ function MedicationCard({ medication }: { medication: Medication }) {
   const { mutate: remove, isPending } = useRemoveMedication();
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-border bg-card">
+    <div className="flex items-center gap-3 px-4 py-3 bg-card">
       {medication.itemImage ? (
         <img
           src={medication.itemImage}
@@ -42,15 +42,6 @@ function MedicationCard({ medication }: { medication: Medication }) {
             {[medication.drugShape, medication.colorClass].filter(Boolean).join(" · ")}
           </span>
         )}
-        {medication.timings.length > 0 && (
-          <div className="flex gap-1 flex-wrap mt-0.5">
-            {medication.timings.map((t) => (
-              <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-                {DOSE_TIMING_LABELS[t]}
-              </span>
-            ))}
-          </div>
-        )}
       </div>
       <button
         onClick={() => remove(medication.id)}
@@ -66,7 +57,40 @@ function MedicationCard({ medication }: { medication: Medication }) {
   );
 }
 
-const ALL_TIMINGS: DoseTiming[] = ["MORNING", "LUNCH", "DINNER", "BEDTIME"];
+const ALL_TIMINGS: DoseTiming[] = ["MORNING", "LUNCH", "DINNER", "BEDTIME", "AS_NEEDED"];
+
+function TimingAccordion({ timing, medications }: { timing: DoseTiming | "NONE"; medications: Medication[] }) {
+  const [open, setOpen] = useState(true);
+  const label = timing === "NONE" ? "미설정" : DOSE_TIMING_LABELS[timing];
+
+  return (
+    <div className="rounded-xl border border-border overflow-hidden">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 bg-muted/40 hover:bg-muted/60 transition-colors"
+      >
+        <span className="text-sm font-semibold">{label}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">{medications.length}개</span>
+          <svg
+            width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+            className={["transition-transform duration-200", open ? "rotate-180" : ""].join(" ")}
+          >
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </div>
+      </button>
+      {open && (
+        <div className="flex flex-col divide-y divide-border">
+          {medications.map((med) => (
+            <MedicationCard key={med.id} medication={med} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function DrugSearchSheet({
   open,
@@ -234,6 +258,15 @@ export default function MedicinePage() {
   const [open, setOpen] = useState(false);
   const { data: medications, isLoading, error } = useMedications();
 
+  const groups = [...ALL_TIMINGS, "NONE" as const]
+    .map((timing) => ({
+      timing,
+      medications: (medications ?? []).filter((m) =>
+        timing === "NONE" ? m.timings.length === 0 : m.timings.includes(timing as DoseTiming)
+      ),
+    }))
+    .filter((g) => g.medications.length > 0);
+
   return (
     <div className="min-h-dvh flex flex-col bg-background">
       <Navigation />
@@ -251,8 +284,8 @@ export default function MedicinePage() {
             아래 버튼으로 복용약을 추가하세요.
           </p>
         )}
-        {medications?.map((med) => (
-          <MedicationCard key={med.id} medication={med} />
+        {groups.map(({ timing, medications: meds }) => (
+          <TimingAccordion key={timing} timing={timing} medications={meds} />
         ))}
       </main>
 
