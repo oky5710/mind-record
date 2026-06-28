@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import EntryModal from "./EntryModal";
+import BottomSheet from "@/features/shared/components/BottomSheet";
+import { useHrvList, type HrvRecord } from "@/features/calendar/queries/useHrv";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -14,11 +16,72 @@ function getFirstDayOfMonth(year: number, month: number) {
   return new Date(year, month, 1).getDay();
 }
 
+function HrvDetailSheet({ record, onClose }: { record: HrvRecord; onClose: () => void }) {
+  const date = new Date(record.examinedAt);
+  const dateLabel = `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}`;
+
+  const rows: { label: string; value: number | string | undefined }[] = [
+    { label: "MHR", value: record.mhr },
+    { label: "SDNN", value: record.sdnn },
+    { label: "RMSSD", value: record.rmssd },
+    { label: "PSI", value: record.psi },
+    { label: "TP", value: record.tp },
+    { label: "VLF", value: record.vlf },
+    { label: "LF", value: record.lf },
+    { label: "HF", value: record.hf },
+    { label: "LF Norm", value: record.lfNorm },
+    { label: "HF Norm", value: record.hfNorm },
+    { label: "LF/HF Ratio", value: record.lfHfRatio },
+    { label: "Ectopic Beat", value: record.ectopicBeat },
+    { label: "SRD", value: record.srd },
+    { label: "결과", value: record.result },
+  ];
+
+  return (
+    <BottomSheet open onOpenChange={(v) => !v && onClose()} title={`HRV 검사 — ${dateLabel}`}>
+      <div className="pt-4 flex flex-col gap-1">
+        {record.hospital && (
+          <p className="text-xs text-muted-foreground mb-2">병원: {record.hospital}</p>
+        )}
+        {record.memo && (
+          <p className="text-xs text-muted-foreground mb-3">메모: {record.memo}</p>
+        )}
+        {rows.map(({ label, value }) =>
+          value !== undefined && value !== null ? (
+            <div key={label} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
+              <span className="text-sm text-muted-foreground">{label}</span>
+              <span className="text-sm font-medium">{value}</span>
+            </div>
+          ) : null
+        )}
+      </div>
+    </BottomSheet>
+  );
+}
+
 export default function Calendar() {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedHrv, setSelectedHrv] = useState<HrvRecord | null>(null);
+
+  const { data: hrvList } = useHrvList();
+
+  const hrvByDate = useMemo(() => {
+    const map = new Map<string, HrvRecord[]>();
+    hrvList?.forEach((r) => {
+      const key = r.examinedAt.slice(0, 10);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(r);
+    });
+    return map;
+  }, [hrvList]);
+
+  function getHrvForDay(day: number): HrvRecord[] {
+    const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    return hrvByDate.get(key) ?? [];
+  }
 
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfMonth(year, month);
@@ -32,60 +95,30 @@ export default function Calendar() {
   for (let i = 0; i < cells.length; i += 7) {
     weeks.push(cells.slice(i, i + 7));
   }
-  // 마지막 주 7칸 채우기
   const lastWeek = weeks[weeks.length - 1];
   while (lastWeek.length < 7) lastWeek.push(null);
 
   function prevMonth() {
-    if (month === 0) {
-      setYear((y) => y - 1);
-      setMonth(11);
-    } else {
-      setMonth((m) => m - 1);
-    }
+    if (month === 0) { setYear((y) => y - 1); setMonth(11); }
+    else setMonth((m) => m - 1);
   }
 
   function nextMonth() {
-    if (month === 11) {
-      setYear((y) => y + 1);
-      setMonth(0);
-    } else {
-      setMonth((m) => m + 1);
-    }
+    if (month === 11) { setYear((y) => y + 1); setMonth(0); }
+    else setMonth((m) => m + 1);
   }
 
   function isToday(day: number) {
-    return (
-      day === today.getDate() &&
-      month === today.getMonth() &&
-      year === today.getFullYear()
-    );
+    return day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
   }
 
   return (
     <div className="w-full max-w-md mx-auto select-none">
-      {/* 헤더 */}
-      <p>입력하고 싶은 날짜를 선택해주세요!</p>
-      <div className="flex items-center justify-between px-4 py-3">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={prevMonth}
-          aria-label="이전 달"
-        >
-          ‹
-        </Button>
-        <h2 className="text-lg font-semibold">
-          {year}년 {month + 1}월
-        </h2>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={nextMonth}
-          aria-label="다음 달"
-        >
-          ›
-        </Button>
+      <p className="text-sm text-muted-foreground px-4 pt-3">입력하고 싶은 날짜를 선택해주세요!</p>
+      <div className="flex items-center justify-between px-4 py-2">
+        <Button variant="ghost" size="icon" onClick={prevMonth} aria-label="이전 달">‹</Button>
+        <h2 className="text-lg font-semibold">{year}년 {month + 1}월</h2>
+        <Button variant="ghost" size="icon" onClick={nextMonth} aria-label="다음 달">›</Button>
       </div>
 
       {/* 요일 헤더 */}
@@ -107,49 +140,58 @@ export default function Calendar() {
         {weeks.map((week, wi) => (
           <div key={wi} className="grid grid-cols-7 border-b border-border/50">
             {week.map((day, di) => {
-              const colIndex = di;
+              const hrvRecords = day !== null ? getHrvForDay(day) : [];
               return (
-                <button
+                <div
                   key={di}
-                  disabled={day === null}
+                  role={day !== null ? "button" : undefined}
+                  tabIndex={day !== null ? 0 : undefined}
                   onClick={() => day !== null && setSelectedDate(new Date(year, month, day))}
+                  onKeyDown={(e) => e.key === "Enter" && day !== null && setSelectedDate(new Date(year, month, day))}
                   className={[
-                    "h-14 flex flex-col items-center justify-start pt-1.5 text-sm transition-colors",
+                    "min-h-20 flex flex-col items-start p-1 text-sm transition-colors",
                     day === null ? "cursor-default" : "cursor-pointer hover:bg-muted/60 active:bg-muted",
-                    isToday(day ?? -1)
-                      ? "font-bold"
-                      : colIndex === 0
-                      ? "text-destructive"
-                      : colIndex === 6
-                      ? "text-blue-500"
-                      : "text-foreground",
+                    di === 0 ? "text-destructive" : di === 6 ? "text-blue-500" : "text-foreground",
                   ].join(" ")}
                 >
                   {day !== null && (
-                    <span
-                      className={[
-                        "w-7 h-7 flex items-center justify-center rounded-full text-sm",
-                        isToday(day)
-                          ? "bg-primary text-primary-foreground font-bold"
-                          : "",
-                      ].join(" ")}
-                    >
-                      {day}
-                    </span>
+                    <>
+                      <span
+                        className={[
+                          "w-6 h-6 flex items-center justify-center rounded-full text-xs mb-1",
+                          isToday(day) ? "bg-primary text-primary-foreground font-bold" : "",
+                        ].join(" ")}
+                      >
+                        {day}
+                      </span>
+                      <div className="w-full flex flex-col gap-0.5">
+                        {hrvRecords.map((r) => (
+                          <button
+                            key={r.id}
+                            onClick={(e) => { e.stopPropagation(); setSelectedHrv(r); }}
+                            className="w-full text-left px-1 py-0.5 rounded bg-primary/15 hover:bg-primary/25 transition-colors"
+                          >
+                            <span className="text-[10px] font-medium text-primary leading-tight block truncate">
+                              HRV 검사
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </>
                   )}
-                </button>
+                </div>
               );
             })}
           </div>
         ))}
       </div>
 
-      {/* 날짜 클릭 팝업 */}
       {selectedDate && (
-        <EntryModal
-          date={selectedDate}
-          onClose={() => setSelectedDate(null)}
-        />
+        <EntryModal date={selectedDate} onClose={() => setSelectedDate(null)} />
+      )}
+
+      {selectedHrv && (
+        <HrvDetailSheet record={selectedHrv} onClose={() => setSelectedHrv(null)} />
       )}
     </div>
   );

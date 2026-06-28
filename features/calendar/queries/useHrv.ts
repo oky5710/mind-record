@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const BASE_URL = "http://localhost:3001";
 
@@ -20,6 +20,24 @@ export interface HrvPayload {
   ectopicBeat?: number;
   srd?: number;
   result?: string;
+}
+
+export interface HrvRecord extends HrvPayload {
+  id: number;
+  createdAt: string;
+}
+
+async function fetchHrvList(): Promise<HrvRecord[]> {
+  const res = await fetch(`${BASE_URL}/hrv`);
+  if (!res.ok) throw new Error("HRV 목록 조회 실패");
+  return res.json();
+}
+
+export function useHrvList() {
+  return useQuery({
+    queryKey: ["hrv"],
+    queryFn: fetchHrvList,
+  });
 }
 
 async function createHrv(payload: HrvPayload) {
