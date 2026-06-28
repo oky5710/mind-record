@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { comfortMessages } from "@/app/constants/message";
-import { useCatPhoto } from "@/app/queries/useCatPhoto";
-import Navigation from "./Navigation";
+import { comfortMessages } from "@/features/home/constants/message";
+import { useCatPhoto } from "@/features/home/queries/useCatPhoto";
+import Navigation from "@/features/shared/components/Navigation";
 
 const ALL_MESSAGES = Object.values(comfortMessages).flat();
 

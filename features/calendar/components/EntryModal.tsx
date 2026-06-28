@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import BottomSheet from "./BottomSheet";
+import BottomSheet from "@/features/shared/components/BottomSheet";
 import ExamForm, { type ExamFormData } from "./forms/ExamForm";
-import { useCreateHrv, type HrvPayload } from "@/app/queries/useHrv";
+import { useCreateHrv, type HrvPayload } from "@/features/calendar/queries/useHrv";
 
 type EntryType = "검사" | "기분" | "이벤트";
 
