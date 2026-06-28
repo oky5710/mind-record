@@ -2,6 +2,15 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const BASE_URL = "http://localhost:3001";
 
+export type DoseTiming = "MORNING" | "LUNCH" | "DINNER" | "BEDTIME";
+
+export const DOSE_TIMING_LABELS: Record<DoseTiming, string> = {
+  MORNING: "아침",
+  LUNCH: "점심",
+  DINNER: "저녁",
+  BEDTIME: "취침전",
+};
+
 export interface Medication {
   id: string;
   name: string;
@@ -11,6 +20,7 @@ export interface Medication {
   drugShape?: string;
   colorClass?: string;
   chart?: string;
+  timings: DoseTiming[];
 }
 
 export interface DrugItem {
@@ -42,7 +52,7 @@ export function useMedications() {
   });
 }
 
-async function addMedication(body: { name: string; itemSeq?: string; entpName?: string; itemImage?: string; drugShape?: string; colorClass?: string; chart?: string }) {
+async function addMedication(body: { name: string; itemSeq?: string; entpName?: string; itemImage?: string; drugShape?: string; colorClass?: string; chart?: string; timings?: string[] }) {
   const res = await fetch(`${BASE_URL}/medications`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
