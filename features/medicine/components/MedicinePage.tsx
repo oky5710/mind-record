@@ -19,10 +19,26 @@ function MedicationCard({ medication }: { medication: Medication }) {
 
   return (
     <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-border bg-card">
+      {medication.itemImage ? (
+        <img
+          src={medication.itemImage}
+          alt={medication.name}
+          className="w-16 h-8 object-contain rounded shrink-0 bg-muted"
+        />
+      ) : (
+        <div className="w-16 h-8 rounded shrink-0 bg-muted flex items-center justify-center">
+          <span className="text-[10px] text-muted-foreground">이미지 없음</span>
+        </div>
+      )}
       <div className="flex flex-col gap-0.5 flex-1 min-w-0">
         <span className="text-sm font-medium truncate">{medication.name}</span>
         {medication.entpName && (
           <span className="text-xs text-muted-foreground truncate">{medication.entpName}</span>
+        )}
+        {(medication.drugShape || medication.colorClass) && (
+          <span className="text-xs text-muted-foreground truncate">
+            {[medication.drugShape, medication.colorClass].filter(Boolean).join(" · ")}
+          </span>
         )}
       </div>
       <button

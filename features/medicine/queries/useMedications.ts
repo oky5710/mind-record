@@ -7,7 +7,10 @@ export interface Medication {
   name: string;
   itemSeq?: string;
   entpName?: string;
-  createdAt: string;
+  itemImage?: string;
+  drugShape?: string;
+  colorClass?: string;
+  chart?: string;
 }
 
 export interface DrugItem {
