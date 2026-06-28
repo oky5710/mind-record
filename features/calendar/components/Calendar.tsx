@@ -6,6 +6,7 @@ import EntryModal from "./EntryModal";
 import BottomSheet from "@/features/shared/components/BottomSheet";
 import { useHrvList, type HrvRecord } from "@/features/calendar/queries/useHrv";
 import { useExerciseList, type ExerciseRecord } from "@/features/calendar/queries/useExercise";
+import { useCoffeeList, type CoffeeRecord } from "@/features/calendar/queries/useCoffee";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -60,6 +61,31 @@ function HrvDetailSheet({ record, onClose }: { record: HrvRecord; onClose: () =>
   );
 }
 
+function CoffeeDetailSheet({ record, onClose }: { record: CoffeeRecord; onClose: () => void }) {
+  const date = new Date(record.date);
+  const dateLabel = `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}`;
+  const timeLabel = `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+
+  return (
+    <BottomSheet open onOpenChange={(v) => !v && onClose()} title={`커피 — ${dateLabel}`}>
+      <div className="pt-4 flex flex-col gap-1">
+        {[
+          { label: "종류", value: record.type },
+          { label: "시간", value: timeLabel },
+          { label: "메모", value: record.memo },
+        ]
+          .filter(({ value }) => value !== undefined)
+          .map(({ label, value }) => (
+            <div key={label} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
+              <span className="text-sm text-muted-foreground">{label}</span>
+              <span className="text-sm font-medium">{value}</span>
+            </div>
+          ))}
+      </div>
+    </BottomSheet>
+  );
+}
+
 function ExerciseDetailSheet({ record, onClose }: { record: ExerciseRecord; onClose: () => void }) {
   const date = new Date(record.date);
   const dateLabel = `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}`;
@@ -90,9 +116,11 @@ export default function Calendar() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedHrv, setSelectedHrv] = useState<HrvRecord | null>(null);
   const [selectedExercise, setSelectedExercise] = useState<ExerciseRecord | null>(null);
+  const [selectedCoffee, setSelectedCoffee] = useState<CoffeeRecord | null>(null);
 
   const { data: hrvList } = useHrvList();
   const { data: exerciseList } = useExerciseList();
+  const { data: coffeeList } = useCoffeeList();
 
   const hrvByDate = useMemo(() => {
     const map = new Map<string, HrvRecord[]>();
@@ -114,6 +142,16 @@ export default function Calendar() {
     return map;
   }, [exerciseList]);
 
+  const coffeeByDate = useMemo(() => {
+    const map = new Map<string, CoffeeRecord[]>();
+    coffeeList?.forEach((r) => {
+      const key = r.date.slice(0, 10);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(r);
+    });
+    return map;
+  }, [coffeeList]);
+
   function getHrvForDay(day: number): HrvRecord[] {
     const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     return hrvByDate.get(key) ?? [];
@@ -122,6 +160,11 @@ export default function Calendar() {
   function getExercisesForDay(day: number): ExerciseRecord[] {
     const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     return exerciseByDate.get(key) ?? [];
+  }
+
+  function getCoffeesForDay(day: number): CoffeeRecord[] {
+    const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    return coffeeByDate.get(key) ?? [];
   }
 
   const daysInMonth = getDaysInMonth(year, month);
@@ -183,6 +226,7 @@ export default function Calendar() {
             {week.map((day, di) => {
               const hrvRecords = day !== null ? getHrvForDay(day) : [];
               const exerciseRecords = day !== null ? getExercisesForDay(day) : [];
+              const coffeeRecords = day !== null ? getCoffeesForDay(day) : [];
               return (
                 <div
                   key={di}
@@ -229,6 +273,17 @@ export default function Calendar() {
                             </span>
                           </button>
                         ))}
+                        {coffeeRecords.map((r) => (
+                          <button
+                            key={r.id}
+                            onClick={(e) => { e.stopPropagation(); setSelectedCoffee(r); }}
+                            className="w-full text-left px-1 py-0.5 rounded bg-amber-500/15 hover:bg-amber-500/25 transition-colors"
+                          >
+                            <span className="text-[10px] font-medium text-amber-700 dark:text-amber-400 leading-tight block truncate">
+                              {r.type ?? "커피"}
+                            </span>
+                          </button>
+                        ))}
                       </div>
                     </>
                   )}
@@ -248,6 +303,9 @@ export default function Calendar() {
       )}
       {selectedExercise && (
         <ExerciseDetailSheet record={selectedExercise} onClose={() => setSelectedExercise(null)} />
+      )}
+      {selectedCoffee && (
+        <CoffeeDetailSheet record={selectedCoffee} onClose={() => setSelectedCoffee(null)} />
       )}
     </div>
   );

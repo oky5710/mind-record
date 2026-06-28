@@ -5,14 +5,17 @@ import { Button } from "@/components/ui/button";
 import BottomSheet from "@/features/shared/components/BottomSheet";
 import ExamForm, { type ExamFormData } from "./forms/ExamForm";
 import ExerciseForm, { type ExerciseFormData } from "./forms/ExerciseForm";
+import CoffeeForm, { type CoffeeFormData } from "./forms/CoffeeForm";
 import { useCreateHrv, type HrvPayload } from "@/features/calendar/queries/useHrv";
 import { useCreateExercise } from "@/features/calendar/queries/useExercise";
+import { useCreateCoffee } from "@/features/calendar/queries/useCoffee";
 
-type EntryType = "검사" | "운동" | "기분" | "이벤트";
+type EntryType = "검사" | "운동" | "커피" | "기분" | "이벤트";
 
 const ENTRY_TYPES: { value: EntryType; label: string; description: string }[] = [
   { value: "검사", label: "검사", description: "정신과 검사 결과 기록" },
   { value: "운동", label: "운동", description: "운동 종류 및 시간 기록" },
+  { value: "커피", label: "커피", description: "커피 섭취 기록" },
   { value: "기분", label: "기분", description: "오늘의 기분 및 상태" },
   { value: "이벤트", label: "이벤트", description: "정신건강에 영향을 준 사건" },
 ];
@@ -42,6 +45,7 @@ export default function EntryModal({ date, onClose }: Props) {
   const [selected, setSelected] = useState<EntryType | null>(null);
   const { mutateAsync, isPending, error } = useCreateHrv();
   const { mutateAsync: createExercise, isPending: exercisePending, error: exerciseError } = useCreateExercise();
+  const { mutateAsync: createCoffee, isPending: coffeePending, error: coffeeError } = useCreateCoffee();
 
   function handleOpenChange(open: boolean) {
     if (!open) onClose();
@@ -60,6 +64,18 @@ export default function EntryModal({ date, onClose }: Props) {
       type,
       durationMinutes: data.durationMinutes,
       intensity: data.intensity,
+    });
+    onClose();
+  }
+
+  async function handleCoffeeSubmit(data: CoffeeFormData) {
+    const type = data.coffeeType === "직접입력" ? data.customType : data.coffeeType;
+    const [hours, minutes] = data.time.split(":").map(Number);
+    const dateObj = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours, minutes);
+    await createCoffee({
+      date: dateObj.toISOString(),
+      ...(type ? { type } : {}),
+      ...(data.memo ? { memo: data.memo } : {}),
     });
     onClose();
   }
@@ -106,6 +122,14 @@ export default function EntryModal({ date, onClose }: Props) {
               onCancel={onClose}
               isPending={exercisePending}
               error={exerciseError?.message ?? null}
+            />
+          )}
+          {selected === "커피" && (
+            <CoffeeForm
+              onSubmit={handleCoffeeSubmit}
+              onCancel={onClose}
+              isPending={coffeePending}
+              error={coffeeError?.message ?? null}
             />
           )}
           {(selected === "기분" || selected === "이벤트") && (
