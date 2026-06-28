@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import EntryModal from "./EntryModal";
 import BottomSheet from "@/features/shared/components/BottomSheet";
 import { useHrvList, type HrvRecord } from "@/features/calendar/queries/useHrv";
+import { useExerciseList, type ExerciseRecord } from "@/features/calendar/queries/useExercise";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -59,14 +60,39 @@ function HrvDetailSheet({ record, onClose }: { record: HrvRecord; onClose: () =>
   );
 }
 
+function ExerciseDetailSheet({ record, onClose }: { record: ExerciseRecord; onClose: () => void }) {
+  const date = new Date(record.date);
+  const dateLabel = `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}`;
+  const intensityLabels = ["", "매우 쉬움", "쉬움", "보통", "힘듦", "매우 힘듦"];
+
+  return (
+    <BottomSheet open onOpenChange={(v) => !v && onClose()} title={`운동 — ${dateLabel}`}>
+      <div className="pt-4 flex flex-col gap-1">
+        {[
+          { label: "종류", value: record.type },
+          { label: "시간", value: `${record.durationMinutes}분` },
+          { label: "강도", value: `${record.intensity} (${intensityLabels[record.intensity]})` },
+        ].map(({ label, value }) => (
+          <div key={label} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
+            <span className="text-sm text-muted-foreground">{label}</span>
+            <span className="text-sm font-medium">{value}</span>
+          </div>
+        ))}
+      </div>
+    </BottomSheet>
+  );
+}
+
 export default function Calendar() {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedHrv, setSelectedHrv] = useState<HrvRecord | null>(null);
+  const [selectedExercise, setSelectedExercise] = useState<ExerciseRecord | null>(null);
 
   const { data: hrvList } = useHrvList();
+  const { data: exerciseList } = useExerciseList();
 
   const hrvByDate = useMemo(() => {
     const map = new Map<string, HrvRecord[]>();
@@ -78,9 +104,24 @@ export default function Calendar() {
     return map;
   }, [hrvList]);
 
+  const exerciseByDate = useMemo(() => {
+    const map = new Map<string, ExerciseRecord[]>();
+    exerciseList?.forEach((r) => {
+      const key = r.date.slice(0, 10);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(r);
+    });
+    return map;
+  }, [exerciseList]);
+
   function getHrvForDay(day: number): HrvRecord[] {
     const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     return hrvByDate.get(key) ?? [];
+  }
+
+  function getExercisesForDay(day: number): ExerciseRecord[] {
+    const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    return exerciseByDate.get(key) ?? [];
   }
 
   const daysInMonth = getDaysInMonth(year, month);
@@ -141,6 +182,7 @@ export default function Calendar() {
           <div key={wi} className="grid grid-cols-7 border-b border-border/50">
             {week.map((day, di) => {
               const hrvRecords = day !== null ? getHrvForDay(day) : [];
+              const exerciseRecords = day !== null ? getExercisesForDay(day) : [];
               return (
                 <div
                   key={di}
@@ -176,6 +218,17 @@ export default function Calendar() {
                             </span>
                           </button>
                         ))}
+                        {exerciseRecords.map((r) => (
+                          <button
+                            key={r.id}
+                            onClick={(e) => { e.stopPropagation(); setSelectedExercise(r); }}
+                            className="w-full text-left px-1 py-0.5 rounded bg-green-500/15 hover:bg-green-500/25 transition-colors"
+                          >
+                            <span className="text-[10px] font-medium text-green-600 dark:text-green-400 leading-tight block truncate">
+                              {r.type}
+                            </span>
+                          </button>
+                        ))}
                       </div>
                     </>
                   )}
@@ -192,6 +245,9 @@ export default function Calendar() {
 
       {selectedHrv && (
         <HrvDetailSheet record={selectedHrv} onClose={() => setSelectedHrv(null)} />
+      )}
+      {selectedExercise && (
+        <ExerciseDetailSheet record={selectedExercise} onClose={() => setSelectedExercise(null)} />
       )}
     </div>
   );
