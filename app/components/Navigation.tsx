@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
   { href: "/calendar", label: "입력하기" },
+  { href: "/medicine", label: "복용약" },
   { href: "/chart", label: "차트보기" },
 ];
 
