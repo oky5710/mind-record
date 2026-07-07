@@ -19,7 +19,7 @@ export type ChartMetric =
 
 const METRIC_LABELS: Record<ChartMetric, string> = {
   mhr: "MHR",
-  heartRate: "Heart Rate",
+  heartRate: "평균 심박수",
   lf: "LF",
   hf: "HF",
   sdnn: "SDNN",
@@ -114,13 +114,6 @@ export default function HrvResultCharts({
       type: "bar" as const,
       data: toChartData(records, metric),
     })),
-    {
-      key: "heartRate",
-      label: METRIC_LABELS.heartRate,
-      color: resolvedColors.heartRate,
-      type: "bar" as const,
-      data: toWearableChartData(wearableRecords, "heartRate"),
-    },
     ...LINE_METRICS.map((metric) => ({
       key: metric,
       label: METRIC_LABELS[metric],
@@ -131,6 +124,12 @@ export default function HrvResultCharts({
   ];
 
   const lanes: ChartLane[] = [
+    {
+      key: "heartRate",
+      label: METRIC_LABELS.heartRate,
+      color: resolvedColors.heartRate,
+      data: toWearableChartData(wearableRecords, "heartRate"),
+    },
     {
       key: "heartRateVariability",
       label: METRIC_LABELS.heartRateVariability,

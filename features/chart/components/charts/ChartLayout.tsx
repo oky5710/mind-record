@@ -20,7 +20,7 @@ export const AxisGroup = styled.g`
 
   .domain,
   line {
-    stroke: var(--border, #e4e4e7);
+    stroke: #a1a1aa;
   }
 
   text {
