@@ -7,6 +7,12 @@ import BottomSheet from "@/features/shared/components/BottomSheet";
 import { useHrvList, type HrvRecord } from "@/features/calendar/queries/useHrv";
 import { useExerciseList, type ExerciseRecord } from "@/features/calendar/queries/useExercise";
 import { useCoffeeList, type CoffeeRecord } from "@/features/calendar/queries/useCoffee";
+import { useMoodList, type MoodRecord } from "@/features/calendar/queries/useMood";
+import { MOOD_OPTIONS } from "./forms/MoodForm";
+
+function getMoodOption(score: number) {
+  return MOOD_OPTIONS.find((o) => o.score === score);
+}
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -121,6 +127,7 @@ export default function Calendar() {
   const { data: hrvList } = useHrvList();
   const { data: exerciseList } = useExerciseList();
   const { data: coffeeList } = useCoffeeList();
+  const { data: moodList } = useMoodList();
 
   const hrvByDate = useMemo(() => {
     const map = new Map<string, HrvRecord[]>();
@@ -152,6 +159,16 @@ export default function Calendar() {
     return map;
   }, [coffeeList]);
 
+  const moodByDate = useMemo(() => {
+    const map = new Map<string, MoodRecord[]>();
+    moodList?.forEach((r) => {
+      const key = r.date.slice(0, 10);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(r);
+    });
+    return map;
+  }, [moodList]);
+
   function getHrvForDay(day: number): HrvRecord[] {
     const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     return hrvByDate.get(key) ?? [];
@@ -165,6 +182,11 @@ export default function Calendar() {
   function getCoffeesForDay(day: number): CoffeeRecord[] {
     const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     return coffeeByDate.get(key) ?? [];
+  }
+
+  function getMoodsForDay(day: number): MoodRecord[] {
+    const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    return moodByDate.get(key) ?? [];
   }
 
   const daysInMonth = getDaysInMonth(year, month);
@@ -227,6 +249,7 @@ export default function Calendar() {
               const hrvRecords = day !== null ? getHrvForDay(day) : [];
               const exerciseRecords = day !== null ? getExercisesForDay(day) : [];
               const coffeeRecords = day !== null ? getCoffeesForDay(day) : [];
+              const moodRecords = day !== null ? getMoodsForDay(day) : [];
               return (
                 <div
                   key={di}
@@ -242,14 +265,21 @@ export default function Calendar() {
                 >
                   {day !== null && (
                     <>
-                      <span
-                        className={[
-                          "w-6 h-6 flex items-center justify-center rounded-full text-xs mb-1",
-                          isToday(day) ? "bg-primary text-primary-foreground font-bold" : "",
-                        ].join(" ")}
-                      >
-                        {day}
-                      </span>
+                      <div className="w-full flex items-center justify-between mb-1">
+                        <span
+                          className={[
+                            "w-6 h-6 flex items-center justify-center rounded-full text-xs",
+                            isToday(day) ? "bg-primary text-primary-foreground font-bold" : "",
+                          ].join(" ")}
+                        >
+                          {day}
+                        </span>
+                        {moodRecords.map((r) => (
+                          <span key={r.id} className="text-base leading-none" aria-label="기분">
+                            {getMoodOption(r.score)?.icon}
+                          </span>
+                        ))}
+                      </div>
                       <div className="w-full flex flex-col gap-0.5">
                         {hrvRecords.map((r) => (
                           <button

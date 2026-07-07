@@ -5,6 +5,15 @@ import { comfortMessages } from "@/features/home/constants/message";
 import { useCatPhoto } from "@/features/home/queries/useCatPhoto";
 import Navigation from "@/features/shared/components/Navigation";
 import { useCreateCoffee } from "@/features/calendar/queries/useCoffee";
+import { useCreateMood, useMoodList } from "@/features/calendar/queries/useMood";
+
+const MOOD_OPTIONS = [
+  { score: 1, icon: "😞" },
+  { score: 2, icon: "😕" },
+  { score: 3, icon: "😐" },
+  { score: 4, icon: "🙂" },
+  { score: 5, icon: "😄" },
+];
 
 const ALL_MESSAGES = Object.values(comfortMessages).flat();
 
@@ -12,10 +21,20 @@ export default function EntryScreen() {
   const { data: imageUrl, isError } = useCatPhoto();
   const [message, setMessage] = useState<string | null>(null);
   const { mutate: createCoffee, isPending: coffeePending } = useCreateCoffee();
+  const { mutate: createMood, isPending: moodPending } = useCreateMood();
+  const todayStr = (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`; })();
+  const { data: todayMoods } = useMoodList(todayStr);
+  const hasTodayMood = (todayMoods?.length ?? 0) > 0;
 
   function handleQuickCoffee() {
     const now = new Date();
     createCoffee({ date: now.toISOString(), type: "아메리카노" });
+  }
+
+  function handleQuickMood(score: number) {
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    createMood({ date: dateStr, score });
   }
 
   useEffect(() => {
@@ -34,6 +53,8 @@ export default function EntryScreen() {
         />
       )}
 
+      <p>Track your mind. Find the patterns.</p>
+
       {/* 로딩 중 스켈레톤 */}
       {!imageUrl && !isError && (
         <div className="absolute inset-0 bg-gray-800 animate-pulse" />
@@ -46,7 +67,27 @@ export default function EntryScreen() {
       <Navigation transparent />
 
       {/* 간편 입력 */}
-      <div className="absolute bottom-0 left-0 right-0 px-6 pb-10 flex flex-col items-center gap-4">
+      <div className="absolute bottom-0 left-0 right-0 px-6 pb-10 flex flex-col items-center gap-5">
+        {/* 기분 선택 */}
+        {!hasTodayMood && (
+          <div className="flex flex-col items-center gap-2 w-full">
+            <p className="text-white/80 text-sm font-medium drop-shadow">오늘 기분은 어땠나요?</p>
+            <div className="flex gap-3">
+              {MOOD_OPTIONS.map(({ score, icon }) => (
+                <button
+                  key={score}
+                  onClick={() => handleQuickMood(score)}
+                  disabled={moodPending}
+                  className="text-3xl w-12 h-12 flex items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm border border-white/30 hover:bg-white/35 hover:scale-110 active:scale-95 transition-all disabled:opacity-50"
+                >
+                  {icon}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 간편 버튼 */}
         <div className="flex gap-3">
           <button
             onClick={handleQuickCoffee}
@@ -55,14 +96,9 @@ export default function EntryScreen() {
           >
             {coffeePending ? "저장 중..." : "☕ 커피"}
           </button>
-          {[{ label: "🏃 운동" }, { label: "😊 기분" }].map(({ label }) => (
-            <button
-              key={label}
-              className="px-5 py-2.5 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 text-white text-sm font-medium hover:bg-white/30 active:bg-white/40 transition-colors"
-            >
-              {label}
-            </button>
-          ))}
+          <button className="px-5 py-2.5 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 text-white text-sm font-medium hover:bg-white/30 active:bg-white/40 transition-colors">
+            🏃 운동
+          </button>
         </div>
 
         {/* 위로 메시지 */}
