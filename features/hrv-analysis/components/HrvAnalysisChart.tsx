@@ -582,13 +582,13 @@ export default function HrvAnalysisChart({
                   )}
                   {showPoints &&
                     points.map((p, i) => {
-                      const isLow = recentAvg !== null && p.value < recentAvg * 0.25;
+                      const isLow = recentAvg !== null && p.value < recentAvg * 0.5;
                       return (
                         <circle
                           key={i}
                           cx={xScale(p.date)}
                           cy={yScale(p.value)}
-                          r={3}
+                          r={4}
                           fill="#fff"
                           stroke={isLow ? "#ef4444" : color}
                           strokeWidth={1.5}
