@@ -619,7 +619,6 @@ export default function HrvAnalysisChart({
               )}
               {lanes.map((lane, i) => (
                 <g key={lane.key}>
-                  <rect x={0} y={lane.y} width={innerWidth} height={LANE_HEIGHT} fill="#f4f4f5" />
                   {i > 0 && <line x1={0} x2={innerWidth} y1={lane.y} y2={lane.y} stroke="#d4d4d8" />}
                   {lane.kind === "gantt" &&
                     lane.ranges.map((r, ri) => {
