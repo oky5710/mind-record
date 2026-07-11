@@ -83,6 +83,7 @@ export default function HrvAnalysisPage() {
           </button>
           <Input
             type="date"
+            lang="ko-KR"
             value={jumpDate ?? ""}
             onChange={(e) => setJumpDate(e.target.value || null)}
             className="w-auto ml-auto"

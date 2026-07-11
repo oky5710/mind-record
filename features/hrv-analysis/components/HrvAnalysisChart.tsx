@@ -549,6 +549,7 @@ export default function HrvAnalysisChart({
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
         onPointerLeave={handlePointerUp}
+        onScroll={() => setTooltip(null)}
       >
         <PlotArea style={{ width: scrollableWidth, height: totalHeight }}>
           {showHrv &&
