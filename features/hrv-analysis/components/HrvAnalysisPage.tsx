@@ -8,6 +8,7 @@ import { useWearableList } from "@/features/calendar/queries/useWearable";
 import { useExerciseList } from "@/features/calendar/queries/useExercise";
 import { useCoffeeList } from "@/features/calendar/queries/useCoffee";
 import { useHrvList } from "@/features/calendar/queries/useHrv";
+import { useMoodList } from "@/features/calendar/queries/useMood";
 import HrvAnalysisChart from "./HrvAnalysisChart";
 
 type ViewMode = "day" | "hour";
@@ -18,6 +19,7 @@ export default function HrvAnalysisPage() {
   const { data: exerciseData } = useExerciseList();
   const { data: coffeeData } = useCoffeeList();
   const { data: hrvExamData } = useHrvList();
+  const { data: moodData } = useMoodList();
   const [mode, setMode] = useState<ViewMode>("hour");
   const [jumpDate, setJumpDate] = useState<string | null>(null);
 
@@ -40,6 +42,11 @@ export default function HrvAnalysisPage() {
   const coffeeTimes = useMemo(() => (coffeeData ?? []).map((c) => c.date), [coffeeData]);
 
   const examTimes = useMemo(() => (hrvExamData ?? []).map((h) => h.examinedAt), [hrvExamData]);
+
+  const moodPoints = useMemo(
+    () => (moodData ?? []).map((m) => ({ date: m.date, score: m.score })),
+    [moodData]
+  );
 
   return (
     <div className="min-h-dvh flex flex-col bg-background">
@@ -97,6 +104,7 @@ export default function HrvAnalysisPage() {
             exerciseRanges={exerciseRanges}
             coffeeTimes={coffeeTimes}
             examTimes={examTimes}
+            moodData={moodPoints}
           />
         )}
         {!isLoading && !error && mode === "hour" && (
@@ -111,6 +119,7 @@ export default function HrvAnalysisPage() {
             exerciseRanges={exerciseRanges}
             coffeeTimes={coffeeTimes}
             examTimes={examTimes}
+            moodData={moodPoints}
           />
         )}
       </div>

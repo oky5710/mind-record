@@ -17,6 +17,11 @@ export interface GanttRange {
   end: string;
 }
 
+export interface MoodPoint {
+  date: string;
+  score: number;
+}
+
 interface Props {
   data: HrvSamplePoint[];
   pxPerDay?: number;
@@ -38,9 +43,11 @@ interface Props {
   coffeeTimes?: string[];
   /** 같은 시간 축 위에 검사 받은 시각을 점으로 표시 */
   examTimes?: string[];
+  /** 같은 시간 축 아래에 날짜별 기분 점수(1~5)를 하루짜리 사각형으로 표시 */
+  moodData?: MoodPoint[];
 }
 
-type SeriesKind = "line" | "gantt" | "emoji" | "dot";
+type SeriesKind = "line" | "gantt" | "emoji" | "dot" | "mood";
 
 interface SeriesDef {
   key: string;
@@ -54,7 +61,7 @@ const DRAG_THRESHOLD_PX = 4;
 // 워치 미착용 등으로 측정이 비어있던 구간은 선을 잇지 않고 끊어 보이게 함
 // (정상 간격은 대체로 2시간 안팎 — 그 몇 배 이상 비면 착용하지 않은 것으로 봄)
 const GAP_THRESHOLD_MS = 3 * 60 * 60 * 1000;
-const LANE_HEIGHT = 24;
+const LANE_HEIGHT = 34;
 
 const ScrollContainer = styled.div`
   width: 100%;
@@ -171,6 +178,7 @@ export default function HrvAnalysisChart({
   exerciseRanges,
   coffeeTimes,
   examTimes,
+  moodData,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
@@ -205,8 +213,14 @@ export default function HrvAnalysisChart({
     if (exerciseRanges) list.push({ key: "exercise", label: "운동", color: "#f97316", kind: "gantt" });
     if (coffeeTimes) list.push({ key: "coffee", label: "커피", color: "#92400e", kind: "emoji" });
     if (examTimes) list.push({ key: "exam", label: "검사", color: "#dc2626", kind: "dot" });
+    if (moodData) list.push({ key: "mood", label: "기분", color: "#f59e0b", kind: "mood" });
     return list;
-  }, [color, sleepRanges, exerciseRanges, coffeeTimes, examTimes]);
+  }, [color, sleepRanges, exerciseRanges, coffeeTimes, examTimes, moodData]);
+
+  const moodColorScale = useMemo(
+    () => d3.scaleLinear<string>().domain([1, 3, 5]).range(["#ef4444", "#f59e0b", "#22c55e"]).clamp(true),
+    []
+  );
 
   const showHrv = !hiddenKeys.has("hrv");
 
@@ -221,9 +235,20 @@ export default function HrvAnalysisChart({
         y,
         ranges: s.key === "sleep" ? sleepRanges ?? [] : s.key === "exercise" ? exerciseRanges ?? [] : [],
         times: s.key === "coffee" ? coffeeTimes ?? [] : s.key === "exam" ? examTimes ?? [] : [],
+        moodPoints: s.key === "mood" ? moodData ?? [] : [],
       };
     });
-  }, [seriesDefs, hiddenKeys, showHrv, innerHeight, sleepRanges, exerciseRanges, coffeeTimes, examTimes]);
+  }, [
+    seriesDefs,
+    hiddenKeys,
+    showHrv,
+    innerHeight,
+    sleepRanges,
+    exerciseRanges,
+    coffeeTimes,
+    examTimes,
+    moodData,
+  ]);
 
   const ganttAreaHeight = lanes.length * LANE_HEIGHT;
   const hrvBlockHeight = showHrv ? innerHeight : 0;
@@ -242,8 +267,9 @@ export default function HrvAnalysisChart({
     });
     (coffeeTimes ?? []).forEach((t) => arr.push(new Date(t).getTime()));
     (examTimes ?? []).forEach((t) => arr.push(new Date(t).getTime()));
+    (moodData ?? []).forEach((m) => arr.push(new Date(`${m.date.slice(0, 10)}T00:00:00`).getTime()));
     return arr.filter((t) => !isNaN(t)).sort((a, b) => a - b);
-  }, [data, sleepRanges, exerciseRanges, coffeeTimes, examTimes]);
+  }, [data, sleepRanges, exerciseRanges, coffeeTimes, examTimes, moodData]);
 
   const [minDate, maxDate] = useMemo(() => {
     if (allTimestamps.length === 0) {
@@ -330,10 +356,6 @@ export default function HrvAnalysisChart({
           .tickSize(inset ? 0 : 6)
       );
 
-      if (inset) {
-        sel.select(".domain").attr("display", "none");
-      }
-
       const texts = sel.selectAll<SVGTextElement, Date>(".tick text");
       const n = texts.size();
       // 자정(날짜 경계) 눈금은 볼드로, 맨 앞/뒤 눈금은 캔버스 밖으로 잘리지
@@ -345,7 +367,7 @@ export default function HrvAnalysisChart({
           .style("font-weight", isBoundary ? "700" : "400")
           .style("text-anchor", i === 0 ? "start" : i === n - 1 ? "end" : "middle")
           .style("display", "")
-          .attr("y", inset ? -6 : null);
+          .attr("y", inset ? -10 : null);
         // getBBox()는 이 <text>가 속한 .tick <g transform="translate(x,0)">의
         // 로컬 좌표를 반환하므로, 실제 틱 위치(xScale(d))를 더해 절대 좌표로 변환
         const tickX = xScale(d);
@@ -568,6 +590,26 @@ export default function HrvAnalysisChart({
                           fill={lane.color}
                           stroke="#fff"
                           strokeWidth={1.5}
+                        />
+                      );
+                    })}
+                  {lane.kind === "mood" &&
+                    lane.moodPoints.map((m, mi) => {
+                      const day = m.date.slice(0, 10);
+                      const start = new Date(`${day}T00:00:00`);
+                      const end = new Date(start.getTime() + 86_400_000);
+                      const x1 = Math.max(0, Math.min(innerWidth, xScale(start)));
+                      const x2 = Math.max(0, Math.min(innerWidth, xScale(end)));
+                      const w = x2 - x1;
+                      if (w <= 0) return null;
+                      return (
+                        <rect
+                          key={mi}
+                          x={x1}
+                          y={lane.y + 3}
+                          width={w}
+                          height={LANE_HEIGHT - 6}
+                          fill={moodColorScale(m.score)}
                         />
                       );
                     })}
