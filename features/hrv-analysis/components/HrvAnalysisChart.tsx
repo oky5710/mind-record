@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { PointerEvent as ReactPointerEvent } from "react";
+import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import * as d3 from "d3";
 import styled from "styled-components";
 import { ChartWrapper, ChartEmptyState } from "@/features/chart/components/charts/ChartLayout";
@@ -193,10 +193,16 @@ const AxisGroupDark = styled.g`
   }
 `;
 
-function formatDateTime(d: Date) {
+function formatYmd(d: Date) {
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+function formatYmdHm(d: Date) {
   const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${d.getFullYear()}. ${d.getMonth() + 1}. ${d.getDate()}. ${hh}:${mm}`;
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${formatYmd(d)} ${hh}:${mi}`;
 }
 
 function formatTimeOfDay(d: Date) {
@@ -503,21 +509,31 @@ export default function HrvAnalysisChart({
     dragRef.current = null;
   }
 
-  function handleHoverMove(e: ReactPointerEvent<SVGRectElement>) {
-    if (e.pointerType !== "mouse") return;
-    const svg = e.currentTarget.ownerSVGElement;
-    if (!svg) return;
+  function updateTooltipAt(svg: SVGSVGElement, clientX: number, clientY: number) {
     const rect = svg.getBoundingClientRect();
-    const xPos = e.clientX - rect.left;
+    const xPos = clientX - rect.left;
     const date = xScale.invert(xPos);
     const i = bisectDate(points, date);
     const p = points[Math.min(i, points.length - 1)];
     if (!p) return;
-    setTooltip({ x: e.clientX, y: e.clientY, date: p.date, value: p.value });
+    setTooltip({ x: clientX, y: clientY, date: p.date, value: p.value });
+  }
+
+  function handleHoverMove(e: ReactPointerEvent<SVGRectElement>) {
+    if (e.pointerType !== "mouse") return;
+    const svg = e.currentTarget.ownerSVGElement;
+    if (!svg) return;
+    updateTooltipAt(svg, e.clientX, e.clientY);
   }
 
   function handleHoverLeave(e: ReactPointerEvent) {
     if (e.pointerType === "mouse") setTooltip(null);
+  }
+
+  function handleHoverClick(e: ReactMouseEvent<SVGRectElement>) {
+    const svg = e.currentTarget.ownerSVGElement;
+    if (!svg) return;
+    updateTooltipAt(svg, e.clientX, e.clientY);
   }
 
   if (allTimestamps.length === 0) {
@@ -603,7 +619,18 @@ export default function HrvAnalysisChart({
                     fill="transparent"
                     onPointerMove={handleHoverMove}
                     onPointerLeave={handleHoverLeave}
+                    onClick={handleHoverClick}
                   />
+                  {tooltip !== null && (
+                    <line
+                      x1={xScale(tooltip.date)}
+                      x2={xScale(tooltip.date)}
+                      y1={0}
+                      y2={axisY}
+                      stroke="#52525b"
+                      strokeWidth={1}
+                    />
+                  )}
                   <AxisGroupDark ref={topAxisRef} transform={`translate(0, ${innerHeight})`} />
                 </>
               )}
@@ -716,7 +743,18 @@ export default function HrvAnalysisChart({
         ))}
       </LegendRow>
       <SimpleTooltip
-        data={tooltip ? { x: tooltip.x, y: tooltip.y, label: `${formatDateTime(tooltip.date)} · ${tooltip.value}ms` } : null}
+        data={
+          tooltip
+            ? {
+                x: tooltip.x,
+                y: tooltip.y,
+                label:
+                  tickMode === "date"
+                    ? formatYmd(tooltip.date)
+                    : `${formatYmdHm(tooltip.date)} SDNN ${tooltip.value}`,
+              }
+            : null
+        }
       />
     </ChartWrapper>
   );
