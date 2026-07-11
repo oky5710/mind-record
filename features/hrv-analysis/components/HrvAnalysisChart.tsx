@@ -452,8 +452,7 @@ export default function HrvAnalysisChart({
     return d3.mean(recent, (p) => p.value) ?? null;
   }, [data]);
 
-  // 날짜 경계(0시)마다 세로 그리드를 그려 라인/간트 레인이 서로 정렬돼 보이게 함
-  // 일 단위: 점선, 시간 단위: 실선
+  // 날짜 경계(0시)마다 세로 실선 그리드를 그려 라인/간트 레인이 서로 정렬돼 보이게 함
   const dayGridlines = useMemo(() => {
     return d3.timeDay.range(d3.timeDay.floor(minDate), maxDate);
   }, [minDate, maxDate]);
@@ -555,15 +554,7 @@ export default function HrvAnalysisChart({
           <svg width={scrollableWidth} height={totalHeight} style={{ display: "block" }}>
             <g transform={`translate(0, ${MARGIN.top})`}>
               {dayGridlines.map((d, i) => (
-                <line
-                  key={i}
-                  x1={xScale(d)}
-                  x2={xScale(d)}
-                  y1={0}
-                  y2={axisY}
-                  stroke="#e4e4e7"
-                  strokeDasharray={tickMode === "date" ? "4 4" : undefined}
-                />
+                <line key={i} x1={xScale(d)} x2={xScale(d)} y1={0} y2={axisY} stroke="#e4e4e7" />
               ))}
               {showHrv && (
                 <>
