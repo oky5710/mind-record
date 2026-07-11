@@ -144,6 +144,8 @@ const LaneLabel = styled.div`
   font-size: 11px;
   font-weight: 600;
   color: var(--foreground, #18181b);
+  background: rgba(255, 255, 255, 0.5);
+  padding: 1px 4px;
   pointer-events: none;
   white-space: nowrap;
   transform: translateY(-50%);
