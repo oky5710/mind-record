@@ -104,7 +104,7 @@ const YTickLabel = styled.div`
   transform: translateY(calc(-100% - 4px));
 `;
 
-// 최근 30일 평균 라벨은 스크롤해도 항상 오른쪽에 보이도록 sticky 처리
+// 최근 30일 중앙값 라벨은 스크롤해도 항상 오른쪽에 보이도록 sticky 처리
 const AvgLabelRow = styled.div`
   position: absolute;
   left: 0;
@@ -439,7 +439,7 @@ export default function HrvAnalysisChart({
 
   const yTicks = useMemo(() => yScale.ticks(5), [yScale]);
 
-  // 전체 데이터 중 가장 최근 시점 기준 최근 30일 평균 (현재 확대/스크롤 범위와 무관)
+  // 전체 데이터 중 가장 최근 시점 기준 최근 30일 중앙값 (현재 확대/스크롤 범위와 무관)
   const recentAvg = useMemo(() => {
     if (data.length === 0) return null;
     const sorted = data
@@ -449,7 +449,7 @@ export default function HrvAnalysisChart({
     const cutoff = latest - 30 * 86_400_000;
     const recent = sorted.filter((p) => p.date.getTime() >= cutoff);
     if (recent.length === 0) return null;
-    return d3.mean(recent, (p) => p.value) ?? null;
+    return d3.median(recent, (p) => p.value) ?? null;
   }, [data]);
 
   // 날짜 경계(0시)마다 세로 실선 그리드를 그려 라인/간트 레인이 서로 정렬돼 보이게 함
@@ -543,7 +543,7 @@ export default function HrvAnalysisChart({
             ))}
           {showHrv && recentAvg !== null && (
             <AvgLabelRow style={{ top: MARGIN.top + yScale(recentAvg) }}>
-              <AvgLabel>최근 30일 평균 {recentAvg.toFixed(1)}</AvgLabel>
+              <AvgLabel>최근 30일 중앙값 {recentAvg.toFixed(1)}</AvgLabel>
             </AvgLabelRow>
           )}
           {lanes.map((lane) => (
