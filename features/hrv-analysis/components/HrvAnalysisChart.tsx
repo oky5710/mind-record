@@ -704,22 +704,15 @@ export default function HrvAnalysisChart({
                     lane.moodPoints.map((m, mi) => {
                       const day = m.date.slice(0, 10);
                       const start = new Date(`${day}T00:00:00`);
-                      const end = new Date(start.getTime() + 86_400_000);
-                      const x1 = Math.max(0, Math.min(innerWidth, xScale(start)));
-                      const x2 = Math.max(0, Math.min(innerWidth, xScale(end)));
-                      const w = x2 - x1;
-                      if (w <= 0) return null;
+                      const x = xScale(start);
+                      if (x < 0 || x > innerWidth) return null;
                       return (
-                        <rect
+                        <circle
                           key={mi}
-                          x={x1}
-                          y={lane.y + 3}
-                          width={w}
-                          height={LANE_HEIGHT - 6}
-                          rx={4}
+                          cx={x}
+                          cy={lane.y + LANE_HEIGHT / 2}
+                          r={5}
                           fill={moodColorScale(m.score)}
-                          stroke="#fff"
-                          strokeWidth={1.5}
                         />
                       );
                     })}
