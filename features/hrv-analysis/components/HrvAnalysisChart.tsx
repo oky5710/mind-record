@@ -369,7 +369,7 @@ export default function HrvAnalysisChart({
           .ticks(Math.max(3, Math.round(innerWidth / 70)))
           .tickFormat((d) => formatTick(d as Date))
           .tickSize(inset ? 0 : 6)
-          .tickPadding(inset ? 3 : 10)
+          .tickPadding(inset ? 3 : 8)
       );
 
       const texts = sel.selectAll<SVGTextElement, Date>(".tick text");
