@@ -7,6 +7,8 @@ export interface ExercisePayload {
   type: string;
   durationMinutes: number;
   intensity: number;
+  startedAt?: string;
+  endedAt?: string;
 }
 
 export interface ExerciseRecord extends ExercisePayload {
