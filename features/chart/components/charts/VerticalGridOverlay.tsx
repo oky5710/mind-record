@@ -13,8 +13,8 @@ const GridLine = styled.div`
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 1px;
-  background: var(--border, #e4e4e7);
+  width: 0;
+  border-left: 1px dashed var(--border, #e4e4e7);
 `;
 
 interface Props {

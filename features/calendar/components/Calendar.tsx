@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import EntryModal from "./EntryModal";
 import BottomSheet from "@/features/shared/components/BottomSheet";
+import HrvDetailSheet from "./HrvDetailSheet";
 import { useHrvList, type HrvRecord } from "@/features/calendar/queries/useHrv";
 import { useExerciseList, type ExerciseRecord } from "@/features/calendar/queries/useExercise";
 import { useCoffeeList, type CoffeeRecord } from "@/features/calendar/queries/useCoffee";
@@ -22,49 +23,6 @@ function getDaysInMonth(year: number, month: number) {
 
 function getFirstDayOfMonth(year: number, month: number) {
   return new Date(year, month, 1).getDay();
-}
-
-function HrvDetailSheet({ record, onClose }: { record: HrvRecord; onClose: () => void }) {
-  const date = new Date(record.examinedAt);
-  const dateLabel = `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}`;
-
-  const rows: { label: string; value: number | string | undefined }[] = [
-    { label: "MHR", value: record.mhr },
-    { label: "SDNN", value: record.sdnn },
-    { label: "RMSSD", value: record.rmssd },
-    { label: "PSI", value: record.psi },
-    { label: "TP", value: record.tp },
-    { label: "VLF", value: record.vlf },
-    { label: "LF", value: record.lf },
-    { label: "HF", value: record.hf },
-    { label: "LF Norm", value: record.lfNorm },
-    { label: "HF Norm", value: record.hfNorm },
-    { label: "LF/HF Ratio", value: record.lfHfRatio },
-    { label: "Ectopic Beat", value: record.ectopicBeat },
-    { label: "SRD", value: record.srd },
-    { label: "결과", value: record.result },
-  ];
-
-  return (
-    <BottomSheet open onOpenChange={(v) => !v && onClose()} title={`HRV 검사 — ${dateLabel}`}>
-      <div className="pt-4 flex flex-col gap-1">
-        {record.hospital && (
-          <p className="text-xs text-muted-foreground mb-2">병원: {record.hospital}</p>
-        )}
-        {record.memo && (
-          <p className="text-xs text-muted-foreground mb-3">메모: {record.memo}</p>
-        )}
-        {rows.map(({ label, value }) =>
-          value !== undefined && value !== null ? (
-            <div key={label} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
-              <span className="text-sm text-muted-foreground">{label}</span>
-              <span className="text-sm font-medium">{value}</span>
-            </div>
-          ) : null
-        )}
-      </div>
-    </BottomSheet>
-  );
 }
 
 function CoffeeDetailSheet({ record, onClose }: { record: CoffeeRecord; onClose: () => void }) {

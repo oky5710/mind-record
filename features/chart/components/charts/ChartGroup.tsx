@@ -7,9 +7,8 @@ import styled from "styled-components";
 import { ChartWrapper, ChartEmptyState } from "./ChartLayout";
 import { LANE_MARGIN } from "./laneLayout";
 import { collectDates } from "./dateUtils";
-import Legend from "./Legend";
 import DateAxisRow from "./DateAxisRow";
-import CombinedChart, { type ChartSeries } from "./CombinedChart";
+import ExamCircleRow, { type ExamCircleDatum } from "./ExamCircleRow";
 import BarLane from "./BarLane";
 import VerticalGridOverlay from "./VerticalGridOverlay";
 import Tooltip, { type TooltipData, type HoverPoint } from "./Tooltip";
@@ -23,13 +22,16 @@ export interface ChartLane {
 }
 
 interface Props {
-  combinedSeries: ChartSeries[];
+  examCircleData: ExamCircleDatum[];
+  examColors: { lfNorm: string; hfNorm: string };
   lanes: ChartLane[];
   dayWidth?: number;
   onReachStart?: () => void;
+  onSelectExam?: (date: string) => void;
 }
 
 const LOAD_MORE_THRESHOLD_DAYS = 3;
+const DRAG_THRESHOLD_PX = 4;
 
 const ScrollContainer = styled.div`
   width: 100%;
@@ -74,9 +76,21 @@ const StickyAxisInner = styled.div`
   width: fit-content;
 `;
 
-export default function ChartGroup({ combinedSeries, lanes, dayWidth = 30, onReachStart }: Props) {
+export default function ChartGroup({
+  examCircleData,
+  examColors,
+  lanes,
+  dayWidth = 30,
+  onReachStart,
+  onSelectExam,
+}: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const dragRef = useRef<{ startX: number; startScrollLeft: number } | null>(null);
+  const dragRef = useRef<{
+    startX: number;
+    startScrollLeft: number;
+    pointerId: number;
+    dragging: boolean;
+  } | null>(null);
   const prevDatesRef = useRef<string[] | null>(null);
   const hasRequestedMoreRef = useRef(false);
   const topAxisInnerRef = useRef<HTMLDivElement>(null);
@@ -88,34 +102,32 @@ export default function ChartGroup({ combinedSeries, lanes, dayWidth = 30, onRea
     if (bottomAxisInnerRef.current) bottomAxisInnerRef.current.style.transform = transform;
   }
 
-  const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(new Set());
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
 
-  function toggleSeries(key: string) {
-    setHiddenKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }
-
   const dates = useMemo(
-    () => collectDates([...combinedSeries.map((s) => s.data), ...lanes.map((l) => l.data)]),
-    [combinedSeries, lanes]
+    () =>
+      collectDates([
+        ...lanes.map((l) => l.data),
+        examCircleData.map((d) => ({ date: d.date, value: 0 })),
+      ]),
+    [lanes, examCircleData]
   );
 
   const dataByDate = useMemo(() => {
     const map = new Map<string, { label: string; value: number; color: string }[]>();
-    const allSources = [...combinedSeries, ...lanes];
-    allSources.forEach((source) => {
+    lanes.forEach((source) => {
       source.data.forEach((d) => {
         if (!map.has(d.date)) map.set(d.date, []);
         map.get(d.date)!.push({ label: source.label, value: d.value, color: source.color });
       });
     });
+    examCircleData.forEach((d) => {
+      if (!map.has(d.date)) map.set(d.date, []);
+      map.get(d.date)!.push({ label: "LF Norm", value: d.lfNorm, color: examColors.lfNorm });
+      map.get(d.date)!.push({ label: "HF Norm", value: d.hfNorm, color: examColors.hfNorm });
+    });
     return map;
-  }, [combinedSeries, lanes]);
+  }, [lanes, examCircleData, examColors]);
 
   function handleHover(point: HoverPoint | null) {
     if (!point) {
@@ -167,15 +179,28 @@ export default function ChartGroup({ combinedSeries, lanes, dayWidth = 30, onRea
     if (e.pointerType !== "mouse") return;
     const el = scrollRef.current;
     if (!el) return;
-    dragRef.current = { startX: e.clientX, startScrollLeft: el.scrollLeft };
-    el.setPointerCapture(e.pointerId);
+    dragRef.current = {
+      startX: e.clientX,
+      startScrollLeft: el.scrollLeft,
+      pointerId: e.pointerId,
+      dragging: false,
+    };
   }
 
   function handlePointerMove(e: ReactPointerEvent<HTMLDivElement>) {
     if (!dragRef.current) return;
     const el = scrollRef.current;
     if (!el) return;
-    el.scrollLeft = dragRef.current.startScrollLeft - (e.clientX - dragRef.current.startX);
+    const dx = e.clientX - dragRef.current.startX;
+    if (!dragRef.current.dragging) {
+      // Only start capturing (and thus scrolling) once the pointer has
+      // actually moved — otherwise a plain click gets its click event
+      // redirected to this element instead of the thing under the cursor.
+      if (Math.abs(dx) < DRAG_THRESHOLD_PX) return;
+      dragRef.current.dragging = true;
+      el.setPointerCapture(dragRef.current.pointerId);
+    }
+    el.scrollLeft = dragRef.current.startScrollLeft - dx;
     syncAxisOffset(el.scrollLeft);
   }
 
@@ -197,8 +222,7 @@ export default function ChartGroup({ combinedSeries, lanes, dayWidth = 30, onRea
     }
   }
 
-  const noData =
-    combinedSeries.every((s) => s.data.length === 0) && lanes.every((l) => l.data.length === 0);
+  const noData = lanes.every((l) => l.data.length === 0) && examCircleData.length === 0;
 
   if (noData) {
     return <ChartEmptyState>데이터가 없습니다</ChartEmptyState>;
@@ -206,11 +230,6 @@ export default function ChartGroup({ combinedSeries, lanes, dayWidth = 30, onRea
 
   return (
     <ChartWrapper>
-      <Legend
-        entries={combinedSeries.map((s) => ({ key: s.key, label: s.label, color: s.color }))}
-        hiddenKeys={hiddenKeys}
-        onToggle={toggleSeries}
-      />
       <StickyAxisBar $edge="top">
         <StickyAxisInner ref={topAxisInnerRef}>
           <DateAxisRow dates={dates} xScale={xScale} dayWidth={dayWidth} totalWidth={totalWidth} orientation="top" />
@@ -227,12 +246,13 @@ export default function ChartGroup({ combinedSeries, lanes, dayWidth = 30, onRea
       >
         <Stack>
           <VerticalGridOverlay dates={dates} xScale={xScale} />
-          <CombinedChart
-            series={combinedSeries}
-            hiddenKeys={hiddenKeys}
+          <ExamCircleRow
+            data={examCircleData}
             xScale={xScale}
             totalWidth={totalWidth}
-            onHoverPoint={handleHover}
+            dayWidth={dayWidth}
+            colors={examColors}
+            onSelect={onSelectExam}
           />
           {lanes.map((lane) => (
             <Fragment key={lane.key}>
