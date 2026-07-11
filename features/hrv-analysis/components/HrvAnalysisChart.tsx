@@ -4,7 +4,7 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "re
 import type { PointerEvent as ReactPointerEvent } from "react";
 import * as d3 from "d3";
 import styled from "styled-components";
-import { ChartWrapper, ChartEmptyState, AxisGroup } from "@/features/chart/components/charts/ChartLayout";
+import { ChartWrapper, ChartEmptyState } from "@/features/chart/components/charts/ChartLayout";
 import SimpleTooltip from "./SimpleTooltip";
 
 export interface HrvSamplePoint {
@@ -153,6 +153,20 @@ const LegendDot = styled.span`
   height: 8px;
   border-radius: 999px;
   display: inline-block;
+`;
+
+// 이 차트만 x축 색을 공용 AxisGroup보다 진하게 표시
+const AxisGroupDark = styled.g`
+  font-size: 10px;
+
+  .domain,
+  line {
+    stroke: #52525b;
+  }
+
+  text {
+    fill: #3f3f46;
+  }
 `;
 
 function formatDateTime(d: Date) {
@@ -367,7 +381,7 @@ export default function HrvAnalysisChart({
           .style("font-weight", isBoundary ? "700" : "400")
           .style("text-anchor", i === 0 ? "start" : i === n - 1 ? "end" : "middle")
           .style("display", "")
-          .attr("y", inset ? -10 : null);
+          .attr("y", inset ? -14 : null);
         // getBBox()는 이 <text>가 속한 .tick <g transform="translate(x,0)">의
         // 로컬 좌표를 반환하므로, 실제 틱 위치(xScale(d))를 더해 절대 좌표로 변환
         const tickX = xScale(d);
@@ -523,12 +537,12 @@ export default function HrvAnalysisChart({
                     onPointerMove={handleHoverMove}
                     onPointerLeave={handleHoverLeave}
                   />
-                  <AxisGroup ref={topAxisRef} transform={`translate(0, ${innerHeight})`} />
+                  <AxisGroupDark ref={topAxisRef} transform={`translate(0, ${innerHeight})`} />
                 </>
               )}
               {/* HRV 라인 바로 아래 축과 위치가 겹칠 때(레인이 없을 때)는 중복 렌더링하지 않음 */}
               {(!showHrv || ganttAreaHeight > 0) && (
-                <AxisGroup ref={bottomAxisRef} transform={`translate(0, ${axisY})`} />
+                <AxisGroupDark ref={bottomAxisRef} transform={`translate(0, ${axisY})`} />
               )}
               {lanes.map((lane, i) => (
                 <g key={lane.key}>
