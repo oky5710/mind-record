@@ -116,6 +116,7 @@ const LaneLabel = styled.div`
   position: sticky;
   left: 4px;
   display: inline-block;
+  vertical-align: top;
   width: fit-content;
   font-size: 11px;
   font-weight: 600;
@@ -368,6 +369,7 @@ export default function HrvAnalysisChart({
           .ticks(Math.max(3, Math.round(innerWidth / 70)))
           .tickFormat((d) => formatTick(d as Date))
           .tickSize(inset ? 0 : 6)
+          .tickPadding(inset ? 3 : 10)
       );
 
       const texts = sel.selectAll<SVGTextElement, Date>(".tick text");
@@ -377,11 +379,13 @@ export default function HrvAnalysisChart({
       const items: { node: SVGTextElement; isBoundary: boolean; left: number; right: number }[] = [];
       texts.each(function (d, i) {
         const isBoundary = tickMode === "time" && d3.timeDay(d).getTime() === d.getTime();
-        d3.select(this)
+        const textSel = d3
+          .select(this)
           .style("font-weight", isBoundary ? "700" : "400")
           .style("text-anchor", i === 0 ? "start" : i === n - 1 ? "end" : "middle")
-          .style("display", "")
-          .attr("y", inset ? -14 : null);
+          .style("display", "");
+        // outside(bottom) 축은 tickPadding으로 이미 간격이 반영되어 있으므로 건드리지 않음
+        if (inset) textSel.attr("y", -14);
         // getBBox()는 이 <text>가 속한 .tick <g transform="translate(x,0)">의
         // 로컬 좌표를 반환하므로, 실제 틱 위치(xScale(d))를 더해 절대 좌표로 변환
         const tickX = xScale(d);
