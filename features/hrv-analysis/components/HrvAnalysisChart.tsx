@@ -12,6 +12,11 @@ export interface HrvSamplePoint {
   value: number;
 }
 
+export interface GanttRange {
+  start: string;
+  end: string;
+}
+
 interface Props {
   data: HrvSamplePoint[];
   pxPerDay?: number;
@@ -25,6 +30,21 @@ interface Props {
   tickMode?: "date" | "time";
   /** 값이 바뀔 때마다 해당 날짜가 화면 중앙에 오도록 스크롤 이동 */
   jumpToDate?: string | null;
+  /** 같은 시간 축 아래에 수면 구간을 간트 차트로 표시 */
+  sleepRanges?: GanttRange[];
+  /** 같은 시간 축 아래에 운동 구간을 간트 차트로 표시 */
+  exerciseRanges?: GanttRange[];
+  /** 같은 시간 축 위에 커피 마신 시각을 이모티콘으로 표시 */
+  coffeeTimes?: string[];
+}
+
+type SeriesKind = "line" | "gantt" | "emoji";
+
+interface SeriesDef {
+  key: string;
+  label: string;
+  color: string;
+  kind: SeriesKind;
 }
 
 const MARGIN = { top: 16, right: 16, bottom: 28 };
@@ -32,6 +52,9 @@ const DRAG_THRESHOLD_PX = 4;
 // 워치 미착용 등으로 측정이 비어있던 구간은 선을 잇지 않고 끊어 보이게 함
 // (정상 간격은 대체로 2시간 안팎 — 그 몇 배 이상 비면 착용하지 않은 것으로 봄)
 const GAP_THRESHOLD_MS = 3 * 60 * 60 * 1000;
+const LANE_HEIGHT = 24;
+const LANE_GAP = 8;
+const GANTT_TOP_GAP = 20;
 
 const ScrollContainer = styled.div`
   width: 100%;
@@ -74,6 +97,57 @@ const YTickLabel = styled.div`
   transform: translateY(calc(-100% - 4px));
 `;
 
+// 간트 레인 제목도 y축 숫자와 같은 방식(sticky)으로 왼쪽에 고정
+const LaneLabelRow = styled.div`
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 0;
+`;
+
+const LaneLabel = styled.div`
+  position: sticky;
+  left: 4px;
+  display: inline-block;
+  width: fit-content;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--foreground, #18181b);
+  pointer-events: none;
+  white-space: nowrap;
+  transform: translateY(-50%);
+`;
+
+const LegendRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 10px;
+  padding: 0 4px;
+`;
+
+const LegendItem = styled.button<{ $active: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--foreground, #18181b);
+  background: ${(p) => (p.$active ? "var(--muted, #f4f4f5)" : "transparent")};
+  border: none;
+  border-radius: 999px;
+  padding: 3px 10px;
+  cursor: pointer;
+  opacity: ${(p) => (p.$active ? 1 : 0.45)};
+`;
+
+const LegendDot = styled.span`
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  display: inline-block;
+`;
+
 function formatDateTime(d: Date) {
   const hh = String(d.getHours()).padStart(2, "0");
   const mm = String(d.getMinutes()).padStart(2, "0");
@@ -93,6 +167,9 @@ export default function HrvAnalysisChart({
   showPoints = false,
   tickMode = "date",
   jumpToDate,
+  sleepRanges,
+  exerciseRanges,
+  coffeeTimes,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
@@ -106,6 +183,16 @@ export default function HrvAnalysisChart({
   const [tooltip, setTooltip] = useState<{ x: number; y: number; date: Date; value: number } | null>(
     null
   );
+  const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(new Set());
+
+  function toggleSeries(key: string) {
+    setHiddenKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
 
   const points = useMemo(() => {
     const sorted = data
@@ -127,6 +214,37 @@ export default function HrvAnalysisChart({
   }, [data, windowDays, jumpToDate]);
 
   const innerHeight = height - MARGIN.top - MARGIN.bottom;
+
+  const seriesDefs = useMemo(() => {
+    const list: SeriesDef[] = [{ key: "hrv", label: "심박변이", color, kind: "line" }];
+    if (sleepRanges) list.push({ key: "sleep", label: "수면", color: "#6366f1", kind: "gantt" });
+    if (exerciseRanges) list.push({ key: "exercise", label: "운동", color: "#f97316", kind: "gantt" });
+    if (coffeeTimes) list.push({ key: "coffee", label: "커피", color: "#92400e", kind: "emoji" });
+    return list;
+  }, [color, sleepRanges, exerciseRanges, coffeeTimes]);
+
+  const showHrv = !hiddenKeys.has("hrv");
+
+  const lanes = useMemo(() => {
+    const visible = seriesDefs.filter((s) => s.kind !== "line" && !hiddenKeys.has(s.key));
+    let cursor = (showHrv ? innerHeight : 0) + (visible.length > 0 ? GANTT_TOP_GAP : 0);
+    return visible.map((s) => {
+      const y = cursor;
+      cursor += LANE_HEIGHT + LANE_GAP;
+      return {
+        ...s,
+        y,
+        ranges: s.key === "sleep" ? sleepRanges ?? [] : s.key === "exercise" ? exerciseRanges ?? [] : [],
+        times: s.key === "coffee" ? coffeeTimes ?? [] : [],
+      };
+    });
+  }, [seriesDefs, hiddenKeys, showHrv, innerHeight, sleepRanges, exerciseRanges, coffeeTimes]);
+
+  const ganttAreaHeight =
+    lanes.length > 0 ? GANTT_TOP_GAP + lanes.length * LANE_HEIGHT + (lanes.length - 1) * LANE_GAP : 0;
+  const hrvBlockHeight = showHrv ? innerHeight : 0;
+  const axisY = hrvBlockHeight + ganttAreaHeight;
+  const totalHeight = MARGIN.top + hrvBlockHeight + ganttAreaHeight + MARGIN.bottom;
 
   const [minDate, maxDate] = useMemo(() => {
     if (points.length === 0) {
@@ -293,44 +411,113 @@ export default function HrvAnalysisChart({
         onPointerCancel={handlePointerUp}
         onPointerLeave={handlePointerUp}
       >
-        <PlotArea style={{ width: scrollableWidth, height }}>
-          {yTicks.map((t) => (
-            <YTickRow key={t} style={{ top: MARGIN.top + yScale(t) }}>
-              <YTickLabel>{t}</YTickLabel>
-            </YTickRow>
+        <PlotArea style={{ width: scrollableWidth, height: totalHeight }}>
+          {showHrv &&
+            yTicks.map((t) => (
+              <YTickRow key={t} style={{ top: MARGIN.top + yScale(t) }}>
+                <YTickLabel>{t}</YTickLabel>
+              </YTickRow>
+            ))}
+          {lanes.map((lane) => (
+            <LaneLabelRow key={lane.key} style={{ top: MARGIN.top + lane.y + LANE_HEIGHT / 2 }}>
+              <LaneLabel>{lane.label}</LaneLabel>
+            </LaneLabelRow>
           ))}
-          <svg width={scrollableWidth} height={height} style={{ display: "block" }}>
+          <svg width={scrollableWidth} height={totalHeight} style={{ display: "block" }}>
             <g transform={`translate(0, ${MARGIN.top})`}>
-              {yTicks.map((t) => (
-                <line key={t} x1={0} x2={innerWidth} y1={yScale(t)} y2={yScale(t)} stroke="#e4e4e7" />
-              ))}
-              <AxisGroup ref={xAxisRef} transform={`translate(0, ${innerHeight})`} />
-              <path d={lineGenerator(points) ?? undefined} fill="none" stroke={color} strokeWidth={1.5} />
-              {showPoints &&
-                points.map((p, i) => (
-                  <circle
-                    key={i}
-                    cx={xScale(p.date)}
-                    cy={yScale(p.value)}
-                    r={3}
-                    fill="#fff"
-                    stroke={color}
-                    strokeWidth={1.5}
+              {showHrv && (
+                <>
+                  {yTicks.map((t) => (
+                    <line key={t} x1={0} x2={innerWidth} y1={yScale(t)} y2={yScale(t)} stroke="#e4e4e7" />
+                  ))}
+                  <path d={lineGenerator(points) ?? undefined} fill="none" stroke={color} strokeWidth={1.5} />
+                  {showPoints &&
+                    points.map((p, i) => (
+                      <circle
+                        key={i}
+                        cx={xScale(p.date)}
+                        cy={yScale(p.value)}
+                        r={3}
+                        fill="#fff"
+                        stroke={color}
+                        strokeWidth={1.5}
+                      />
+                    ))}
+                  <rect
+                    x={0}
+                    y={0}
+                    width={innerWidth}
+                    height={innerHeight}
+                    fill="transparent"
+                    onPointerMove={handleHoverMove}
+                    onPointerLeave={handleHoverLeave}
                   />
-                ))}
-              <rect
-                x={0}
-                y={0}
-                width={innerWidth}
-                height={innerHeight}
-                fill="transparent"
-                onPointerMove={handleHoverMove}
-                onPointerLeave={handleHoverLeave}
-              />
+                </>
+              )}
+              <AxisGroup ref={xAxisRef} transform={`translate(0, ${axisY})`} />
+              {lanes.map((lane) => (
+                <g key={lane.key}>
+                  <rect x={0} y={lane.y} width={innerWidth} height={LANE_HEIGHT} rx={4} fill="#f4f4f5" />
+                  {lane.kind === "gantt" &&
+                    lane.ranges.map((r, ri) => {
+                      const start = new Date(r.start);
+                      const end = new Date(r.end);
+                      if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) return null;
+                      const x1 = Math.max(0, Math.min(innerWidth, xScale(start)));
+                      const x2 = Math.max(0, Math.min(innerWidth, xScale(end)));
+                      const w = x2 - x1;
+                      if (w <= 0) return null;
+                      return (
+                        <rect
+                          key={ri}
+                          x={x1}
+                          y={lane.y + 3}
+                          width={w}
+                          height={LANE_HEIGHT - 6}
+                          rx={4}
+                          fill={lane.color}
+                          opacity={0.85}
+                        />
+                      );
+                    })}
+                  {lane.kind === "emoji" &&
+                    lane.times.map((t, ti) => {
+                      const d = new Date(t);
+                      if (isNaN(d.getTime())) return null;
+                      const x = xScale(d);
+                      if (x < 0 || x > innerWidth) return null;
+                      return (
+                        <text
+                          key={ti}
+                          x={x}
+                          y={lane.y + LANE_HEIGHT / 2}
+                          textAnchor="middle"
+                          dominantBaseline="central"
+                          fontSize={14}
+                        >
+                          ☕
+                        </text>
+                      );
+                    })}
+                </g>
+              ))}
             </g>
           </svg>
         </PlotArea>
       </ScrollContainer>
+      <LegendRow>
+        {seriesDefs.map((s) => (
+          <LegendItem
+            key={s.key}
+            type="button"
+            $active={!hiddenKeys.has(s.key)}
+            onClick={() => toggleSeries(s.key)}
+          >
+            {s.kind === "emoji" ? <span aria-hidden>☕</span> : <LegendDot style={{ background: s.color }} />}
+            {s.label}
+          </LegendItem>
+        ))}
+      </LegendRow>
       <SimpleTooltip
         data={tooltip ? { x: tooltip.x, y: tooltip.y, label: `${formatDateTime(tooltip.date)} · ${tooltip.value}ms` } : null}
       />
