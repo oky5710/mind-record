@@ -36,9 +36,11 @@ interface Props {
   exerciseRanges?: GanttRange[];
   /** 같은 시간 축 위에 커피 마신 시각을 이모티콘으로 표시 */
   coffeeTimes?: string[];
+  /** 같은 시간 축 위에 검사 받은 시각을 점으로 표시 */
+  examTimes?: string[];
 }
 
-type SeriesKind = "line" | "gantt" | "emoji";
+type SeriesKind = "line" | "gantt" | "emoji" | "dot";
 
 interface SeriesDef {
   key: string;
@@ -170,6 +172,7 @@ export default function HrvAnalysisChart({
   sleepRanges,
   exerciseRanges,
   coffeeTimes,
+  examTimes,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
@@ -179,7 +182,8 @@ export default function HrvAnalysisChart({
     dragging: boolean;
   } | null>(null);
   const hasInitScrolled = useRef(false);
-  const xAxisRef = useRef<SVGGElement>(null);
+  const topAxisRef = useRef<SVGGElement>(null);
+  const bottomAxisRef = useRef<SVGGElement>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; date: Date; value: number } | null>(
     null
   );
@@ -194,25 +198,6 @@ export default function HrvAnalysisChart({
     });
   }
 
-  const points = useMemo(() => {
-    const sorted = data
-      .map((d) => ({ date: new Date(d.timestamp), value: d.value }))
-      .sort((a, b) => a.date.getTime() - b.date.getTime());
-    if (!windowDays || sorted.length === 0) return sorted;
-    // 특정 날짜로 이동한 경우, 그 날짜를 기준으로 앞뒤 절반씩 보여줌
-    // (기본은 최신 데이터 기준으로 최근 N일만)
-    if (jumpToDate) {
-      const anchor = new Date(`${jumpToDate}T00:00:00`).getTime();
-      const half = (windowDays / 2) * 86_400_000;
-      return sorted.filter((p) => {
-        const t = p.date.getTime();
-        return t >= anchor - half && t <= anchor + half;
-      });
-    }
-    const cutoff = sorted[sorted.length - 1].date.getTime() - windowDays * 86_400_000;
-    return sorted.filter((p) => p.date.getTime() >= cutoff);
-  }, [data, windowDays, jumpToDate]);
-
   const innerHeight = height - MARGIN.top - MARGIN.bottom;
 
   const seriesDefs = useMemo(() => {
@@ -220,8 +205,9 @@ export default function HrvAnalysisChart({
     if (sleepRanges) list.push({ key: "sleep", label: "수면", color: "#6366f1", kind: "gantt" });
     if (exerciseRanges) list.push({ key: "exercise", label: "운동", color: "#f97316", kind: "gantt" });
     if (coffeeTimes) list.push({ key: "coffee", label: "커피", color: "#92400e", kind: "emoji" });
+    if (examTimes) list.push({ key: "exam", label: "검사", color: "#dc2626", kind: "dot" });
     return list;
-  }, [color, sleepRanges, exerciseRanges, coffeeTimes]);
+  }, [color, sleepRanges, exerciseRanges, coffeeTimes, examTimes]);
 
   const showHrv = !hiddenKeys.has("hrv");
 
@@ -235,10 +221,10 @@ export default function HrvAnalysisChart({
         ...s,
         y,
         ranges: s.key === "sleep" ? sleepRanges ?? [] : s.key === "exercise" ? exerciseRanges ?? [] : [],
-        times: s.key === "coffee" ? coffeeTimes ?? [] : [],
+        times: s.key === "coffee" ? coffeeTimes ?? [] : s.key === "exam" ? examTimes ?? [] : [],
       };
     });
-  }, [seriesDefs, hiddenKeys, showHrv, innerHeight, sleepRanges, exerciseRanges, coffeeTimes]);
+  }, [seriesDefs, hiddenKeys, showHrv, innerHeight, sleepRanges, exerciseRanges, coffeeTimes, examTimes]);
 
   const ganttAreaHeight =
     lanes.length > 0 ? GANTT_TOP_GAP + lanes.length * LANE_HEIGHT + (lanes.length - 1) * LANE_GAP : 0;
@@ -246,13 +232,47 @@ export default function HrvAnalysisChart({
   const axisY = hrvBlockHeight + ganttAreaHeight;
   const totalHeight = MARGIN.top + hrvBlockHeight + ganttAreaHeight + MARGIN.bottom;
 
+  // 수면/운동/커피/검사가 HRV 측정 기간보다 최근일 수 있으므로, 모든 시리즈를
+  // 합친 타임스탬프를 기준으로 시간 축(도메인)을 잡아야 최신 데이터가 함께 보임
+  const allTimestamps = useMemo(() => {
+    const arr: number[] = data.map((d) => new Date(d.timestamp).getTime());
+    (sleepRanges ?? []).forEach((r) => {
+      arr.push(new Date(r.start).getTime(), new Date(r.end).getTime());
+    });
+    (exerciseRanges ?? []).forEach((r) => {
+      arr.push(new Date(r.start).getTime(), new Date(r.end).getTime());
+    });
+    (coffeeTimes ?? []).forEach((t) => arr.push(new Date(t).getTime()));
+    (examTimes ?? []).forEach((t) => arr.push(new Date(t).getTime()));
+    return arr.filter((t) => !isNaN(t)).sort((a, b) => a - b);
+  }, [data, sleepRanges, exerciseRanges, coffeeTimes, examTimes]);
+
   const [minDate, maxDate] = useMemo(() => {
-    if (points.length === 0) {
+    if (allTimestamps.length === 0) {
       const now = new Date();
       return [now, now];
     }
-    return [points[0].date, points[points.length - 1].date];
-  }, [points]);
+    const overallMin = allTimestamps[0];
+    const overallMax = allTimestamps[allTimestamps.length - 1];
+    if (!windowDays) return [new Date(overallMin), new Date(overallMax)];
+    // 특정 날짜로 이동한 경우, 그 날짜를 기준으로 앞뒤 절반씩 보여줌
+    // (기본은 전체 시리즈 중 가장 최근 데이터 기준으로 최근 N일만)
+    if (jumpToDate) {
+      const anchor = new Date(`${jumpToDate}T00:00:00`).getTime();
+      const half = (windowDays / 2) * 86_400_000;
+      return [new Date(anchor - half), new Date(anchor + half)];
+    }
+    return [new Date(overallMax - windowDays * 86_400_000), new Date(overallMax)];
+  }, [allTimestamps, windowDays, jumpToDate]);
+
+  const points = useMemo(() => {
+    const minT = minDate.getTime();
+    const maxT = maxDate.getTime();
+    return data
+      .map((d) => ({ date: new Date(d.timestamp), value: d.value }))
+      .filter((p) => p.date.getTime() >= minT && p.date.getTime() <= maxT)
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+  }, [data, minDate, maxDate]);
 
   const totalDays = Math.max(1, (maxDate.getTime() - minDate.getTime()) / 86_400_000);
   const innerWidth = Math.max(300, totalDays * pxPerDay);
@@ -281,66 +301,69 @@ export default function HrvAnalysisChart({
   const bisectDate = useMemo(() => d3.bisector((p: { date: Date }) => p.date).left, []);
 
   useEffect(() => {
-    if (!xAxisRef.current) return;
     const formatTick =
       tickMode === "time"
         ? (d: Date) => (d3.timeDay(d).getTime() === d.getTime() ? d3.timeFormat("%m-%d")(d) : formatTimeOfDay(d))
         : (d: Date) => d3.timeFormat("%m-%d")(d);
 
-    const sel = d3.select(xAxisRef.current).call(
-      d3
-        .axisBottom(xScale)
-        .ticks(Math.max(3, Math.round(innerWidth / 70)))
-        .tickFormat((d) => formatTick(d as Date))
-    );
+    // HRV 라인 바로 아래(top) + 전체 레인들 아래(bottom), 두 곳 모두에 같은 축을 그림
+    [topAxisRef.current, bottomAxisRef.current].forEach((axisEl) => {
+      if (!axisEl) return;
+      const sel = d3.select(axisEl).call(
+        d3
+          .axisBottom(xScale)
+          .ticks(Math.max(3, Math.round(innerWidth / 70)))
+          .tickFormat((d) => formatTick(d as Date))
+      );
 
-    const texts = sel.selectAll<SVGTextElement, Date>(".tick text");
-    const n = texts.size();
-    // 자정(날짜 경계) 눈금은 볼드로, 맨 앞/뒤 눈금은 캔버스 밖으로 잘리지
-    // 않도록 정렬 기준을 안쪽으로 붙임
-    const items: { node: SVGTextElement; isBoundary: boolean; left: number; right: number }[] = [];
-    texts.each(function (d, i) {
-      const isBoundary = tickMode === "time" && d3.timeDay(d).getTime() === d.getTime();
-      d3.select(this)
-        .style("font-weight", isBoundary ? "700" : "400")
-        .style("text-anchor", i === 0 ? "start" : i === n - 1 ? "end" : "middle")
-        .style("display", "");
-      // getBBox()는 이 <text>가 속한 .tick <g transform="translate(x,0)">의
-      // 로컬 좌표를 반환하므로, 실제 틱 위치(xScale(d))를 더해 절대 좌표로 변환
-      const tickX = xScale(d);
-      const box = this.getBBox();
-      items.push({ node: this, isBoundary, left: tickX + box.x, right: tickX + box.x + box.width });
-    });
+      const texts = sel.selectAll<SVGTextElement, Date>(".tick text");
+      const n = texts.size();
+      // 자정(날짜 경계) 눈금은 볼드로, 맨 앞/뒤 눈금은 캔버스 밖으로 잘리지
+      // 않도록 정렬 기준을 안쪽으로 붙임
+      const items: { node: SVGTextElement; isBoundary: boolean; left: number; right: number }[] = [];
+      texts.each(function (d, i) {
+        const isBoundary = tickMode === "time" && d3.timeDay(d).getTime() === d.getTime();
+        d3.select(this)
+          .style("font-weight", isBoundary ? "700" : "400")
+          .style("text-anchor", i === 0 ? "start" : i === n - 1 ? "end" : "middle")
+          .style("display", "");
+        // getBBox()는 이 <text>가 속한 .tick <g transform="translate(x,0)">의
+        // 로컬 좌표를 반환하므로, 실제 틱 위치(xScale(d))를 더해 절대 좌표로 변환
+        const tickX = xScale(d);
+        const box = this.getBBox();
+        items.push({ node: this, isBoundary, left: tickX + box.x, right: tickX + box.x + box.width });
+      });
 
-    // 겹치는 라벨은 자연스럽게 생략 (날짜 경계 라벨은 항상 유지)
-    const LABEL_PADDING = 6;
-    const boundaryLefts = items.filter((it) => it.isBoundary).map((it) => it.left);
-    let lastVisibleRight: number | null = null;
-    items.forEach((item) => {
-      if (item.isBoundary) {
-        d3.select(item.node).style("display", "");
-        lastVisibleRight = item.right;
-        return;
-      }
-      const overlapsPrev = lastVisibleRight !== null && item.left < lastVisibleRight + LABEL_PADDING;
-      const nextBoundaryLeft = boundaryLefts.find((left) => left > item.left);
-      const overlapsNextBoundary =
-        nextBoundaryLeft !== undefined && item.right + LABEL_PADDING > nextBoundaryLeft;
-      const shouldHide = overlapsPrev || overlapsNextBoundary;
-      d3.select(item.node).style("display", shouldHide ? "none" : "");
-      if (!shouldHide) lastVisibleRight = item.right;
+      // 겹치는 라벨은 자연스럽게 생략 (날짜 경계 라벨은 항상 유지)
+      const LABEL_PADDING = 6;
+      const boundaryLefts = items.filter((it) => it.isBoundary).map((it) => it.left);
+      let lastVisibleRight: number | null = null;
+      items.forEach((item) => {
+        if (item.isBoundary) {
+          d3.select(item.node).style("display", "");
+          lastVisibleRight = item.right;
+          return;
+        }
+        const overlapsPrev = lastVisibleRight !== null && item.left < lastVisibleRight + LABEL_PADDING;
+        const nextBoundaryLeft = boundaryLefts.find((left) => left > item.left);
+        const overlapsNextBoundary =
+          nextBoundaryLeft !== undefined && item.right + LABEL_PADDING > nextBoundaryLeft;
+        const shouldHide = overlapsPrev || overlapsNextBoundary;
+        d3.select(item.node).style("display", shouldHide ? "none" : "");
+        if (!shouldHide) lastVisibleRight = item.right;
+      });
     });
-  }, [xScale, innerWidth, tickMode]);
+  }, [xScale, innerWidth, tickMode, showHrv, axisY]);
 
   const yTicks = useMemo(() => yScale.ticks(5), [yScale]);
 
   // 처음 로드되면 가장 최근 데이터가 보이도록 오른쪽 끝으로 스크롤
   useLayoutEffect(() => {
     const el = scrollRef.current;
-    if (!el || hasInitScrolled.current || points.length === 0) return;
+    if (!el || hasInitScrolled.current || allTimestamps.length === 0) return;
     el.scrollLeft = el.scrollWidth - el.clientWidth;
     hasInitScrolled.current = true;
-  }, [points]);
+  }, [allTimestamps, innerWidth]);
 
   // 날짜를 입력받으면 해당 날짜가 화면 중앙에 오도록 스크롤 이동
   useLayoutEffect(() => {
@@ -397,7 +420,7 @@ export default function HrvAnalysisChart({
     if (e.pointerType === "mouse") setTooltip(null);
   }
 
-  if (points.length === 0) {
+  if (allTimestamps.length === 0) {
     return <ChartEmptyState>데이터가 없습니다</ChartEmptyState>;
   }
 
@@ -452,9 +475,13 @@ export default function HrvAnalysisChart({
                     onPointerMove={handleHoverMove}
                     onPointerLeave={handleHoverLeave}
                   />
+                  <AxisGroup ref={topAxisRef} transform={`translate(0, ${innerHeight})`} />
                 </>
               )}
-              <AxisGroup ref={xAxisRef} transform={`translate(0, ${axisY})`} />
+              {/* HRV 라인 바로 아래 축과 위치가 겹칠 때(레인이 없을 때)는 중복 렌더링하지 않음 */}
+              {(!showHrv || ganttAreaHeight > 0) && (
+                <AxisGroup ref={bottomAxisRef} transform={`translate(0, ${axisY})`} />
+              )}
               {lanes.map((lane) => (
                 <g key={lane.key}>
                   <rect x={0} y={lane.y} width={innerWidth} height={LANE_HEIGHT} rx={4} fill="#f4f4f5" />
@@ -497,6 +524,24 @@ export default function HrvAnalysisChart({
                         >
                           ☕
                         </text>
+                      );
+                    })}
+                  {lane.kind === "dot" &&
+                    lane.times.map((t, ti) => {
+                      const d = new Date(t);
+                      if (isNaN(d.getTime())) return null;
+                      const x = xScale(d);
+                      if (x < 0 || x > innerWidth) return null;
+                      return (
+                        <circle
+                          key={ti}
+                          cx={x}
+                          cy={lane.y + LANE_HEIGHT / 2}
+                          r={5}
+                          fill={lane.color}
+                          stroke="#fff"
+                          strokeWidth={1.5}
+                        />
                       );
                     })}
                 </g>
