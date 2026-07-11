@@ -17,29 +17,21 @@ interface Props {
   pxPerDay?: number;
   height?: number;
   color?: string;
+  /** 최근 N일만 보여줌 (시간 단위처럼 확대해서 볼 때 전체 기간을 다 그리면 무거워짐) */
+  windowDays?: number;
+  /** 개별 측정 지점을 원으로 표시할지 (확대해서 볼 때만 의미 있음) */
+  showPoints?: boolean;
+  /** "date": MM-dd만 표시. "time": 평소엔 hh:mm, 자정(날짜 경계)엔 MM-dd를 볼드로 */
+  tickMode?: "date" | "time";
+  /** 값이 바뀔 때마다 해당 날짜가 화면 중앙에 오도록 스크롤 이동 */
+  jumpToDate?: string | null;
 }
 
-const MARGIN = { top: 16, right: 16, bottom: 28, left: 40 };
+const MARGIN = { top: 16, right: 16, bottom: 28 };
 const DRAG_THRESHOLD_PX = 4;
 // 워치 미착용 등으로 측정이 비어있던 구간은 선을 잇지 않고 끊어 보이게 함
 // (정상 간격은 대체로 2시간 안팎 — 그 몇 배 이상 비면 착용하지 않은 것으로 봄)
 const GAP_THRESHOLD_MS = 3 * 60 * 60 * 1000;
-
-const Row = styled.div`
-  display: flex;
-  align-items: flex-start;
-`;
-
-const YAxisSvg = styled.svg`
-  flex-shrink: 0;
-  display: block;
-`;
-
-const YAxisGroup = styled(AxisGroup)`
-  .domain {
-    display: none;
-  }
-`;
 
 const ScrollContainer = styled.div`
   width: 100%;
@@ -57,13 +49,51 @@ const ScrollContainer = styled.div`
   }
 `;
 
+const PlotArea = styled.div`
+  position: relative;
+`;
+
+// 절대위치(높이 0)로 감싸서 정확한 y좌표에 놓되, 안쪽 라벨은 sticky로
+// 가로 스크롤 중에도 항상 왼쪽에 붙어 보이게 함 (y축이 별도 폭을 차지하지 않음)
+const YTickRow = styled.div`
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 0;
+`;
+
+const YTickLabel = styled.div`
+  position: sticky;
+  left: 4px;
+  display: inline-block;
+  width: fit-content;
+  font-size: 10px;
+  color: var(--muted-foreground, #71717a);
+  pointer-events: none;
+  white-space: nowrap;
+  transform: translateY(calc(-100% - 4px));
+`;
+
 function formatDateTime(d: Date) {
   const hh = String(d.getHours()).padStart(2, "0");
   const mm = String(d.getMinutes()).padStart(2, "0");
   return `${d.getFullYear()}. ${d.getMonth() + 1}. ${d.getDate()}. ${hh}:${mm}`;
 }
 
-export default function HrvAnalysisChart({ data, pxPerDay = 60, height = 260, color = "#14b8a6" }: Props) {
+function formatTimeOfDay(d: Date) {
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+export default function HrvAnalysisChart({
+  data,
+  pxPerDay = 60,
+  height = 260,
+  color = "#14b8a6",
+  windowDays,
+  showPoints = false,
+  tickMode = "date",
+  jumpToDate,
+}: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
     startX: number;
@@ -73,18 +103,28 @@ export default function HrvAnalysisChart({ data, pxPerDay = 60, height = 260, co
   } | null>(null);
   const hasInitScrolled = useRef(false);
   const xAxisRef = useRef<SVGGElement>(null);
-  const yAxisRef = useRef<SVGGElement>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; date: Date; value: number } | null>(
     null
   );
 
-  const points = useMemo(
-    () =>
-      data
-        .map((d) => ({ date: new Date(d.timestamp), value: d.value }))
-        .sort((a, b) => a.date.getTime() - b.date.getTime()),
-    [data]
-  );
+  const points = useMemo(() => {
+    const sorted = data
+      .map((d) => ({ date: new Date(d.timestamp), value: d.value }))
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+    if (!windowDays || sorted.length === 0) return sorted;
+    // 특정 날짜로 이동한 경우, 그 날짜를 기준으로 앞뒤 절반씩 보여줌
+    // (기본은 최신 데이터 기준으로 최근 N일만)
+    if (jumpToDate) {
+      const anchor = new Date(`${jumpToDate}T00:00:00`).getTime();
+      const half = (windowDays / 2) * 86_400_000;
+      return sorted.filter((p) => {
+        const t = p.date.getTime();
+        return t >= anchor - half && t <= anchor + half;
+      });
+    }
+    const cutoff = sorted[sorted.length - 1].date.getTime() - windowDays * 86_400_000;
+    return sorted.filter((p) => p.date.getTime() >= cutoff);
+  }, [data, windowDays, jumpToDate]);
 
   const innerHeight = height - MARGIN.top - MARGIN.bottom;
 
@@ -124,13 +164,55 @@ export default function HrvAnalysisChart({ data, pxPerDay = 60, height = 260, co
 
   useEffect(() => {
     if (!xAxisRef.current) return;
-    d3.select(xAxisRef.current).call(d3.axisBottom(xScale).ticks(Math.max(3, Math.round(innerWidth / 100))));
-  }, [xScale, innerWidth]);
+    const formatTick =
+      tickMode === "time"
+        ? (d: Date) => (d3.timeDay(d).getTime() === d.getTime() ? d3.timeFormat("%m-%d")(d) : formatTimeOfDay(d))
+        : (d: Date) => d3.timeFormat("%m-%d")(d);
 
-  useEffect(() => {
-    if (!yAxisRef.current) return;
-    d3.select(yAxisRef.current).call(d3.axisLeft(yScale).ticks(5).tickSize(0));
-  }, [yScale]);
+    const sel = d3.select(xAxisRef.current).call(
+      d3
+        .axisBottom(xScale)
+        .ticks(Math.max(3, Math.round(innerWidth / 70)))
+        .tickFormat((d) => formatTick(d as Date))
+    );
+
+    const texts = sel.selectAll<SVGTextElement, Date>(".tick text");
+    const n = texts.size();
+    // 자정(날짜 경계) 눈금은 볼드로, 맨 앞/뒤 눈금은 캔버스 밖으로 잘리지
+    // 않도록 정렬 기준을 안쪽으로 붙임
+    const items: { node: SVGTextElement; isBoundary: boolean; left: number; right: number }[] = [];
+    texts.each(function (d, i) {
+      const isBoundary = tickMode === "time" && d3.timeDay(d).getTime() === d.getTime();
+      d3.select(this)
+        .style("font-weight", isBoundary ? "700" : "400")
+        .style("text-anchor", i === 0 ? "start" : i === n - 1 ? "end" : "middle")
+        .style("display", "");
+      // getBBox()는 이 <text>가 속한 .tick <g transform="translate(x,0)">의
+      // 로컬 좌표를 반환하므로, 실제 틱 위치(xScale(d))를 더해 절대 좌표로 변환
+      const tickX = xScale(d);
+      const box = this.getBBox();
+      items.push({ node: this, isBoundary, left: tickX + box.x, right: tickX + box.x + box.width });
+    });
+
+    // 겹치는 라벨은 자연스럽게 생략 (날짜 경계 라벨은 항상 유지)
+    const LABEL_PADDING = 6;
+    const boundaryLefts = items.filter((it) => it.isBoundary).map((it) => it.left);
+    let lastVisibleRight: number | null = null;
+    items.forEach((item) => {
+      if (item.isBoundary) {
+        d3.select(item.node).style("display", "");
+        lastVisibleRight = item.right;
+        return;
+      }
+      const overlapsPrev = lastVisibleRight !== null && item.left < lastVisibleRight + LABEL_PADDING;
+      const nextBoundaryLeft = boundaryLefts.find((left) => left > item.left);
+      const overlapsNextBoundary =
+        nextBoundaryLeft !== undefined && item.right + LABEL_PADDING > nextBoundaryLeft;
+      const shouldHide = overlapsPrev || overlapsNextBoundary;
+      d3.select(item.node).style("display", shouldHide ? "none" : "");
+      if (!shouldHide) lastVisibleRight = item.right;
+    });
+  }, [xScale, innerWidth, tickMode]);
 
   const yTicks = useMemo(() => yScale.ticks(5), [yScale]);
 
@@ -141,6 +223,15 @@ export default function HrvAnalysisChart({ data, pxPerDay = 60, height = 260, co
     el.scrollLeft = el.scrollWidth - el.clientWidth;
     hasInitScrolled.current = true;
   }, [points]);
+
+  // 날짜를 입력받으면 해당 날짜가 화면 중앙에 오도록 스크롤 이동
+  useLayoutEffect(() => {
+    if (!jumpToDate) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const targetX = xScale(new Date(`${jumpToDate}T00:00:00`));
+    el.scrollLeft = Math.max(0, targetX - el.clientWidth / 2);
+  }, [jumpToDate, xScale]);
 
   function handlePointerDown(e: ReactPointerEvent<HTMLDivElement>) {
     if (e.pointerType !== "mouse") return;
@@ -194,34 +285,39 @@ export default function HrvAnalysisChart({ data, pxPerDay = 60, height = 260, co
 
   return (
     <ChartWrapper>
-      <Row>
-        <YAxisSvg width={MARGIN.left} height={height}>
-          <g transform={`translate(${MARGIN.left}, ${MARGIN.top})`}>
-            <YAxisGroup ref={yAxisRef} />
-          </g>
-        </YAxisSvg>
-        <ScrollContainer
-          ref={scrollRef}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerUp}
-          onPointerLeave={handlePointerUp}
-        >
+      <ScrollContainer
+        ref={scrollRef}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        onPointerLeave={handlePointerUp}
+      >
+        <PlotArea style={{ width: scrollableWidth, height }}>
+          {yTicks.map((t) => (
+            <YTickRow key={t} style={{ top: MARGIN.top + yScale(t) }}>
+              <YTickLabel>{t}</YTickLabel>
+            </YTickRow>
+          ))}
           <svg width={scrollableWidth} height={height} style={{ display: "block" }}>
             <g transform={`translate(0, ${MARGIN.top})`}>
               {yTicks.map((t) => (
-                <line
-                  key={t}
-                  x1={0}
-                  x2={innerWidth}
-                  y1={yScale(t)}
-                  y2={yScale(t)}
-                  stroke="#e4e4e7"
-                />
+                <line key={t} x1={0} x2={innerWidth} y1={yScale(t)} y2={yScale(t)} stroke="#e4e4e7" />
               ))}
               <AxisGroup ref={xAxisRef} transform={`translate(0, ${innerHeight})`} />
               <path d={lineGenerator(points) ?? undefined} fill="none" stroke={color} strokeWidth={1.5} />
+              {showPoints &&
+                points.map((p, i) => (
+                  <circle
+                    key={i}
+                    cx={xScale(p.date)}
+                    cy={yScale(p.value)}
+                    r={3}
+                    fill="#fff"
+                    stroke={color}
+                    strokeWidth={1.5}
+                  />
+                ))}
               <rect
                 x={0}
                 y={0}
@@ -233,8 +329,8 @@ export default function HrvAnalysisChart({ data, pxPerDay = 60, height = 260, co
               />
             </g>
           </svg>
-        </ScrollContainer>
-      </Row>
+        </PlotArea>
+      </ScrollContainer>
       <SimpleTooltip
         data={tooltip ? { x: tooltip.x, y: tooltip.y, label: `${formatDateTime(tooltip.date)} · ${tooltip.value}ms` } : null}
       />

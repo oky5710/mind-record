@@ -1,25 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Navigation from "@/features/shared/components/Navigation";
+import { Input } from "@/components/ui/input";
 import { useWearableSampleList } from "@/features/calendar/queries/useWearableSample";
 import HrvAnalysisChart from "./HrvAnalysisChart";
-import HrvDayChart from "./HrvDayChart";
 
 type ViewMode = "day" | "hour";
 
 export default function HrvAnalysisPage() {
   const { data, isLoading, error } = useWearableSampleList("heartRateVariability");
-  const [mode, setMode] = useState<ViewMode>("day");
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
-
-  const availableDates = useMemo(() => {
-    const set = new Set<string>();
-    (data ?? []).forEach((d) => set.add(d.timestamp.slice(0, 10)));
-    return Array.from(set).sort();
-  }, [data]);
-
-  const effectiveDate = selectedDate ?? availableDates[availableDates.length - 1] ?? null;
+  const [mode, setMode] = useState<ViewMode>("hour");
+  const [jumpDate, setJumpDate] = useState<string | null>(null);
 
   return (
     <div className="min-h-dvh flex flex-col bg-background">
@@ -54,19 +46,30 @@ export default function HrvAnalysisPage() {
           >
             시간 단위
           </button>
+          <Input
+            type="date"
+            value={jumpDate ?? ""}
+            onChange={(e) => setJumpDate(e.target.value || null)}
+            className="w-auto ml-auto"
+            aria-label="날짜로 이동"
+          />
         </div>
 
         {isLoading && (
           <p className="text-sm text-muted-foreground text-center py-10">불러오는 중...</p>
         )}
         {error && <p className="text-sm text-destructive text-center py-10">{error.message}</p>}
-        {!isLoading && !error && mode === "day" && <HrvAnalysisChart data={data ?? []} />}
+        {!isLoading && !error && mode === "day" && (
+          <HrvAnalysisChart data={data ?? []} pxPerDay={60} tickMode="date" jumpToDate={jumpDate} />
+        )}
         {!isLoading && !error && mode === "hour" && (
-          <HrvDayChart
+          <HrvAnalysisChart
             data={data ?? []}
-            availableDates={availableDates}
-            selectedDate={effectiveDate}
-            onSelectDate={setSelectedDate}
+            pxPerDay={400}
+            windowDays={30}
+            showPoints
+            tickMode="time"
+            jumpToDate={jumpDate}
           />
         )}
       </div>

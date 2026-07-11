@@ -60,7 +60,8 @@ lib/
 |---|---|
 | `/` | 진입 화면 (고양이 사진 + 위로 메시지) |
 | `/calendar` | 입력하기 (캘린더) |
-| `/chart` | 차트보기 (추후 구현) |
+| `/chart` | 차트보기 (HRV/웨어러블/기분/커피 통합 대시보드) |
+| `/hrv-analysis` | 심박변이 분석 (일 단위 / 시간 단위, 날짜 이동) |
 
 ## 환경변수
 
@@ -157,6 +158,24 @@ React Hook Form(`useForm`) 사용.
 * Base URL: `http://localhost:3001`
 * API 문서: `/Users/oky/Desktop/mind-chart-backend/api-docs.html` — 이 파일이 최신 명세 기준
 * API 연동 작업 전 반드시 `api-docs.html`을 먼저 확인한다
+
+## 차트 (차트보기, 심박변이 분석 등)
+
+* 차트 라이브러리 없이 **d3 + 순수 SVG**로 직접 구현 (`features/chart/components/charts/`, `features/hrv-analysis/components/`)
+* 커스텀 컴포넌트는 styled-components 사용, 레이아웃/버튼류는 Tailwind
+* 가로 스크롤 차트 공통 패턴:
+  * `ScrollContainer`(`overflow-x: auto`, 스크롤바 숨김) + pointer 이벤트로 드래그 스크롤 구현 (터치는 브라우저 기본 스크롤에 맡기고 `pointerType !== "mouse"`면 드래그 핸들러는 무시)
+  * **주의**: `pointerdown`에서 곧바로 `setPointerCapture`를 호출하면, 스펙상 그 뒤에 오는 `click` 이벤트가 실제 클릭 대상이 아니라 캡처한 엘리먼트로 리다이렉트됨 → 차트 안의 클릭 가능한 요소(원형 마커 등)가 클릭이 안 먹는 버그로 이어짐. 포인터가 일정 거리(예: 4px) 이상 움직였을 때만 `setPointerCapture`를 호출해서 "드래그"와 "클릭"을 구분할 것
+  * y축처럼 값이 가로 스크롤과 무관한 축은 `position: sticky`로 처리해서 별도 여백을 차지하지 않으면서 항상 왼쪽에 보이게 함 (`height: 0`인 절대위치 행으로 y좌표를 잡고, 그 안의 라벨에 `position: sticky; left: Npx`)
+  * x축 라벨이 겹칠 때는 자동으로 생략: `getBBox()`로 실제 렌더링된 텍스트 폭을 측정해서 겹치는지 판단. **단, `getBBox()`는 해당 `.tick`의 `<g transform="translate(x,0)">` 기준 로컬 좌표를 반환**하므로 반드시 `xScale(d)`를 더해 절대 좌표로 변환해야 함 (안 하면 모든 틱이 원점 근처 좌표라 서로 겹치는 것으로 오판되어 대부분이 숨겨짐)
+  * 워치 미착용 등으로 샘플 간격이 비정상적으로 크면(예: 정상 간격의 3배 이상) `d3.line().defined()`로 그 구간의 선을 끊어서 이어붙이지 않음
+  * 페이지 로드 시 최신 데이터가 보이도록 스크롤을 오른쪽 끝으로 자동 이동. 확대해서(시간 단위 등) 볼 때는 `windowDays` 같은 옵션으로 최근 구간만 필터링해서 렌더링 — 전체 기간을 다 그리면 틱/포인트 DOM 개수가 과도하게 많아짐
+
+## 웨어러블 데이터 모델 (백엔드)
+
+* `WearableData`: 하루 1건, 일별 요약값 (평균 심박수, HRV, 수면시간 등) — `@@unique([userId, date])`
+* `WearableSample`: 타임스탬프별 다건 기록용 (예: 애플워치 HRV는 하루 약 2시간 간격으로 여러 번 측정됨) — `type` + `timestamp` + `value`, `POST /wearable-samples/bulk`로 일괄 저장, `GET /wearable-samples?type=...`으로 조회
+* 두 모델 다 `userId`는 nullable — 인증 붙기 전까지는 항상 null
 
 ## 규칙
 
