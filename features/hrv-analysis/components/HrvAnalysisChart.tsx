@@ -45,6 +45,8 @@ interface Props {
   examTimes?: string[];
   /** 같은 시간 축 아래에 날짜별 기분 점수(1~5)를 하루짜리 사각형으로 표시 */
   moodData?: MoodPoint[];
+  /** 검사 결과의 SDNN 값을 검사 시점의 HRV 라인 차트 위에 녹색 세모로 표시 */
+  examSdnnPoints?: HrvSamplePoint[];
 }
 
 type SeriesKind = "line" | "gantt" | "dot" | "mood";
@@ -213,6 +215,7 @@ export default function HrvAnalysisChart({
   coffeeTimes,
   examTimes,
   moodData,
+  examSdnnPoints,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
@@ -597,6 +600,21 @@ export default function HrvAnalysisChart({
                         />
                       );
                     })}
+                  {(examSdnnPoints ?? []).map((p, i) => {
+                    const d = new Date(p.timestamp);
+                    if (isNaN(d.getTime())) return null;
+                    const x = xScale(d);
+                    if (x < 0 || x > innerWidth) return null;
+                    const y = yScale(p.value);
+                    const s = 5;
+                    return (
+                      <polygon
+                        key={i}
+                        points={`${x},${y - s} ${x - s},${y + s} ${x + s},${y + s}`}
+                        fill="#22c55e"
+                      />
+                    );
+                  })}
                   <rect
                     x={0}
                     y={0}

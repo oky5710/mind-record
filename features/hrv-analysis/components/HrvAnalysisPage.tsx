@@ -10,6 +10,8 @@ import { useCoffeeList } from "@/features/calendar/queries/useCoffee";
 import { useHrvList } from "@/features/calendar/queries/useHrv";
 import { useMoodList } from "@/features/calendar/queries/useMood";
 import HrvAnalysisChart from "./HrvAnalysisChart";
+import QueryBuilderIcon from '@mui/icons-material/QueryBuilder';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 
 type ViewMode = "day" | "hour";
 
@@ -48,6 +50,14 @@ export default function HrvAnalysisPage() {
     [moodData]
   );
 
+  const examSdnnPoints = useMemo(
+    () =>
+      (hrvExamData ?? [])
+        .filter((h) => h.sdnn !== undefined)
+        .map((h) => ({ timestamp: h.examinedAt, value: h.sdnn! })),
+    [hrvExamData]
+  );
+
   return (
     <div className="min-h-dvh flex flex-col bg-background">
       <Navigation />
@@ -56,37 +66,39 @@ export default function HrvAnalysisPage() {
           애플워치로 측정된 심박변이(HRV SDNN)를 약 2시간 간격으로 표시합니다.
         </p>
 
-        <div className="flex gap-2 mb-4">
+        <div className="flex justify-between">
+          <div className="flex rounded border-blue-500 border-1 overflow-hidden">
           <button
             type="button"
             onClick={() => setMode("day")}
             className={[
-              "px-3 py-1.5 rounded-full text-sm font-medium transition-colors",
+              "px-2 transition-colors text-s",
               mode === "day"
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground hover:bg-muted/70",
+                ? "bg-blue-50 text-blue-500"
+                : "bg-white hover:bg-muted/70 opacity-20",
             ].join(" ")}
           >
-            일 단위
+            <CalendarMonthIcon fontSize={'small'}/>
           </button>
+            <span className={"border-r-1 border-blue-500"}/>
           <button
             type="button"
             onClick={() => setMode("hour")}
             className={[
-              "px-3 py-1.5 rounded-full text-sm font-medium transition-colors",
+              "px-2 transition-colors text-s",
               mode === "hour"
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground hover:bg-muted/70",
+                ? "bg-blue-50 text-blue-500 "
+                : "bg-white  hover:bg-muted/70 opacity-20",
             ].join(" ")}
           >
-            시간 단위
-          </button>
+            <QueryBuilderIcon fontSize={'small'}/>
+          </button></div>
           <Input
             type="date"
             lang="ko-KR"
             value={jumpDate ?? ""}
             onChange={(e) => setJumpDate(e.target.value || null)}
-            className="w-auto ml-auto"
+            className="w-auto ml-auto "
             aria-label="날짜로 이동"
           />
         </div>
@@ -106,6 +118,7 @@ export default function HrvAnalysisPage() {
             coffeeTimes={coffeeTimes}
             examTimes={examTimes}
             moodData={moodPoints}
+            examSdnnPoints={examSdnnPoints}
           />
         )}
         {!isLoading && !error && mode === "hour" && (
@@ -121,6 +134,7 @@ export default function HrvAnalysisPage() {
             coffeeTimes={coffeeTimes}
             examTimes={examTimes}
             moodData={moodPoints}
+            examSdnnPoints={examSdnnPoints}
           />
         )}
       </div>
