@@ -452,11 +452,11 @@ export default function HrvAnalysisChart({
     return d3.mean(recent, (p) => p.value) ?? null;
   }, [data]);
 
-  // 일 단위로 볼 때는 날짜 경계마다 세로 점선 그리드를 그려 라인/간트 레인이 서로 정렬돼 보이게 함
+  // 날짜 경계(0시)마다 세로 그리드를 그려 라인/간트 레인이 서로 정렬돼 보이게 함
+  // 일 단위: 점선, 시간 단위: 실선
   const dayGridlines = useMemo(() => {
-    if (tickMode !== "date") return [];
     return d3.timeDay.range(d3.timeDay.floor(minDate), maxDate);
-  }, [tickMode, minDate, maxDate]);
+  }, [minDate, maxDate]);
 
   // 처음 로드되면 가장 최근 데이터가 보이도록 오른쪽 끝으로 스크롤
   useLayoutEffect(() => {
@@ -562,7 +562,7 @@ export default function HrvAnalysisChart({
                   y1={0}
                   y2={axisY}
                   stroke="#e4e4e7"
-                  strokeDasharray="4 4"
+                  strokeDasharray={tickMode === "date" ? "4 4" : undefined}
                 />
               ))}
               {showHrv && (
