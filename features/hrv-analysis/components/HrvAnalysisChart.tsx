@@ -55,8 +55,6 @@ const DRAG_THRESHOLD_PX = 4;
 // (정상 간격은 대체로 2시간 안팎 — 그 몇 배 이상 비면 착용하지 않은 것으로 봄)
 const GAP_THRESHOLD_MS = 3 * 60 * 60 * 1000;
 const LANE_HEIGHT = 24;
-const LANE_GAP = 8;
-const GANTT_TOP_GAP = 20;
 
 const ScrollContainer = styled.div`
   width: 100%;
@@ -214,10 +212,10 @@ export default function HrvAnalysisChart({
 
   const lanes = useMemo(() => {
     const visible = seriesDefs.filter((s) => s.kind !== "line" && !hiddenKeys.has(s.key));
-    let cursor = (showHrv ? innerHeight : 0) + (visible.length > 0 ? GANTT_TOP_GAP : 0);
+    let cursor = showHrv ? innerHeight : 0;
     return visible.map((s) => {
       const y = cursor;
-      cursor += LANE_HEIGHT + LANE_GAP;
+      cursor += LANE_HEIGHT;
       return {
         ...s,
         y,
@@ -227,8 +225,7 @@ export default function HrvAnalysisChart({
     });
   }, [seriesDefs, hiddenKeys, showHrv, innerHeight, sleepRanges, exerciseRanges, coffeeTimes, examTimes]);
 
-  const ganttAreaHeight =
-    lanes.length > 0 ? GANTT_TOP_GAP + lanes.length * LANE_HEIGHT + (lanes.length - 1) * LANE_GAP : 0;
+  const ganttAreaHeight = lanes.length * LANE_HEIGHT;
   const hrvBlockHeight = showHrv ? innerHeight : 0;
   const axisY = hrvBlockHeight + ganttAreaHeight;
   const totalHeight = MARGIN.top + hrvBlockHeight + ganttAreaHeight + MARGIN.bottom;
@@ -318,15 +315,24 @@ export default function HrvAnalysisChart({
         ? (d: Date) => (d3.timeDay(d).getTime() === d.getTime() ? d3.timeFormat("%m-%d")(d) : formatTimeOfDay(d))
         : (d: Date) => d3.timeFormat("%m-%d")(d);
 
-    // HRV 라인 바로 아래(top) + 전체 레인들 아래(bottom), 두 곳 모두에 같은 축을 그림
-    [topAxisRef.current, bottomAxisRef.current].forEach((axisEl) => {
+    // HRV 라인차트 안쪽(top, 간트 차트와 붙도록 라벨을 안으로 당김) + 전체 레인들 아래(bottom)
+    const configs = [
+      { el: topAxisRef.current, inset: true },
+      { el: bottomAxisRef.current, inset: false },
+    ];
+    configs.forEach(({ el: axisEl, inset }) => {
       if (!axisEl) return;
       const sel = d3.select(axisEl).call(
         d3
           .axisBottom(xScale)
           .ticks(Math.max(3, Math.round(innerWidth / 70)))
           .tickFormat((d) => formatTick(d as Date))
+          .tickSize(inset ? 0 : 6)
       );
+
+      if (inset) {
+        sel.select(".domain").attr("display", "none");
+      }
 
       const texts = sel.selectAll<SVGTextElement, Date>(".tick text");
       const n = texts.size();
@@ -338,7 +344,8 @@ export default function HrvAnalysisChart({
         d3.select(this)
           .style("font-weight", isBoundary ? "700" : "400")
           .style("text-anchor", i === 0 ? "start" : i === n - 1 ? "end" : "middle")
-          .style("display", "");
+          .style("display", "")
+          .attr("y", inset ? -6 : null);
         // getBBox()는 이 <text>가 속한 .tick <g transform="translate(x,0)">의
         // 로컬 좌표를 반환하므로, 실제 틱 위치(xScale(d))를 더해 절대 좌표로 변환
         const tickX = xScale(d);
@@ -501,9 +508,10 @@ export default function HrvAnalysisChart({
               {(!showHrv || ganttAreaHeight > 0) && (
                 <AxisGroup ref={bottomAxisRef} transform={`translate(0, ${axisY})`} />
               )}
-              {lanes.map((lane) => (
+              {lanes.map((lane, i) => (
                 <g key={lane.key}>
-                  <rect x={0} y={lane.y} width={innerWidth} height={LANE_HEIGHT} rx={4} fill="#f4f4f5" />
+                  <rect x={0} y={lane.y} width={innerWidth} height={LANE_HEIGHT} fill="#f4f4f5" />
+                  {i > 0 && <line x1={0} x2={innerWidth} y1={lane.y} y2={lane.y} stroke="#d4d4d8" />}
                   {lane.kind === "gantt" &&
                     lane.ranges.map((r, ri) => {
                       const start = new Date(r.start);
