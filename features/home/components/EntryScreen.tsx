@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { MouseEvent } from "react";
 import { comfortMessages } from "@/features/home/constants/message";
 import { useCatPhoto } from "@/features/home/queries/useCatPhoto";
 import Navigation from "@/features/shared/components/Navigation";
-import { useCreateCoffee } from "@/features/calendar/queries/useCoffee";
+import { useCreateCoffee, useCoffeeList } from "@/features/calendar/queries/useCoffee";
 import { useCreateMood, useMoodList } from "@/features/calendar/queries/useMood";
 
 const MOOD_OPTIONS = [
@@ -17,6 +18,18 @@ const MOOD_OPTIONS = [
 
 const ALL_MESSAGES = Object.values(comfortMessages).flat();
 
+const HEART_COUNT = 5;
+const HEART_STAGGER_MS = 120;
+const HEART_LIFETIME_MS = 1100;
+const HEART_X_SPREAD = 30;
+
+interface Heart {
+  id: number;
+  x: number;
+  y: number;
+  dx: number;
+}
+
 export default function EntryScreen() {
   const { data: imageUrl, isError } = useCatPhoto();
   const [message, setMessage] = useState<string | null>(null);
@@ -25,6 +38,27 @@ export default function EntryScreen() {
   const todayStr = (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`; })();
   const { data: todayMoods } = useMoodList(todayStr);
   const hasTodayMood = (todayMoods?.length ?? 0) > 0;
+  const { data: coffeeList } = useCoffeeList();
+  const todayCoffeeCount = (coffeeList ?? []).filter((c) => c.date.slice(0, 10) === todayStr).length;
+  const [hearts, setHearts] = useState<Heart[]>([]);
+  const nextHeartId = useRef(0);
+
+  function handlePhotoClick(e: MouseEvent<HTMLElement>) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    for (let i = 0; i < HEART_COUNT; i++) {
+      setTimeout(() => {
+        const id = nextHeartId.current++;
+        const dx = Math.random() * HEART_X_SPREAD * 2 - HEART_X_SPREAD;
+        setHearts((prev) => [...prev, { id, x, y, dx }]);
+        setTimeout(() => {
+          setHearts((prev) => prev.filter((h) => h.id !== id));
+        }, HEART_LIFETIME_MS);
+      }, i * HEART_STAGGER_MS);
+    }
+  }
 
   function handleQuickCoffee() {
     const now = new Date();
@@ -49,7 +83,8 @@ export default function EntryScreen() {
         <img
           src={imageUrl}
           alt="오늘의 고양이"
-          className="absolute inset-0 w-full h-full object-cover"
+          onClick={handlePhotoClick}
+          className="absolute inset-0 w-full h-full object-cover cursor-pointer"
         />
       )}
 
@@ -60,8 +95,20 @@ export default function EntryScreen() {
         <div className="absolute inset-0 bg-gray-800 animate-pulse" />
       )}
 
+      {/* 클릭 시 떠오르는 하트 */}
+      {hearts.map((h) => (
+        <span
+          key={h.id}
+          aria-hidden
+          className="absolute text-2xl pointer-events-none animate-float-up"
+          style={{ left: h.x + h.dx, top: h.y }}
+        >
+          ❤️
+        </span>
+      ))}
+
       {/* 그라데이션 오버레이 */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/70" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/70 pointer-events-none" />
 
       {/* 상단 네비게이션 */}
       <Navigation transparent />
@@ -92,9 +139,14 @@ export default function EntryScreen() {
           <button
             onClick={handleQuickCoffee}
             disabled={coffeePending}
-            className="px-5 py-2.5 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 text-white text-sm font-medium hover:bg-white/30 active:bg-white/40 transition-colors disabled:opacity-50"
+            className="relative px-5 py-2.5 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 text-white text-sm font-medium hover:bg-white/30 active:bg-white/40 transition-colors disabled:opacity-50"
           >
             {coffeePending ? "저장 중..." : "☕ 커피"}
+            {todayCoffeeCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center rounded-full bg-amber-500 text-white text-[10px] font-bold border-1 border-white/50">
+                {todayCoffeeCount}
+              </span>
+            )}
           </button>
           <button className="px-5 py-2.5 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 text-white text-sm font-medium hover:bg-white/30 active:bg-white/40 transition-colors">
             🏃 운동
