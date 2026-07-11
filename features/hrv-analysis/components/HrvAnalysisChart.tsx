@@ -609,7 +609,10 @@ export default function HrvAnalysisChart({
                           y={lane.y + 3}
                           width={w}
                           height={LANE_HEIGHT - 6}
+                          rx={4}
                           fill={moodColorScale(m.score)}
+                          stroke="#fff"
+                          strokeWidth={1.5}
                         />
                       );
                     })}
