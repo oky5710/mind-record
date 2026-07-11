@@ -104,29 +104,6 @@ const YTickLabel = styled.div`
   transform: translateY(calc(-100% - 4px));
 `;
 
-// 최근 30일 중앙값 라벨은 스크롤해도 항상 오른쪽에 보이도록 sticky 처리
-const AvgLabelRow = styled.div`
-  position: absolute;
-  left: 0;
-  width: 100%;
-  height: 0;
-  text-align: right;
-`;
-
-const AvgLabel = styled.div`
-  position: sticky;
-  right: 4px;
-  display: inline-block;
-  width: fit-content;
-  font-size: 10px;
-  font-weight: 600;
-  color: #64748b;
-  padding: 1px 5px;
-  pointer-events: none;
-  white-space: nowrap;
-  transform: translateY(calc(-100% - 4px));
-`;
-
 // 간트 레인 제목도 y축 숫자와 같은 방식(sticky)으로 왼쪽에 고정
 const LaneLabelRow = styled.div`
   position: absolute;
@@ -172,12 +149,23 @@ const LegendItem = styled.button<{ $active: boolean }>`
   padding: 3px 10px;
   cursor: pointer;
   opacity: ${(p) => (p.$active ? 1 : 0.45)};
+
+  &:disabled {
+    cursor: default;
+  }
 `;
 
 const LegendDot = styled.span`
   width: 8px;
   height: 8px;
   border-radius: 999px;
+  display: inline-block;
+`;
+
+const LegendDash = styled.span`
+  width: 14px;
+  height: 0;
+  border-top: 2px dashed #64748b;
   display: inline-block;
 `;
 
@@ -560,11 +548,6 @@ export default function HrvAnalysisChart({
                 <YTickLabel>{t}</YTickLabel>
               </YTickRow>
             ))}
-          {showHrv && recentAvg !== null && (
-            <AvgLabelRow style={{ top: MARGIN.top + yScale(recentAvg) }}>
-              <AvgLabel>최근 30일 중앙값 {recentAvg.toFixed(1)}</AvgLabel>
-            </AvgLabelRow>
-          )}
           {lanes.map((lane) => (
             <LaneLabelRow key={lane.key} style={{ top: MARGIN.top + lane.y + LANE_HEIGHT / 2 }}>
               <LaneLabel>{lane.label}</LaneLabel>
@@ -719,6 +702,14 @@ export default function HrvAnalysisChart({
           </LegendItem>
         ))}
       </LegendRow>
+      {showHrv && recentAvg !== null && (
+        <LegendRow>
+          <LegendItem type="button" $active disabled>
+            <LegendDash />
+            최근 30일 중앙값 {recentAvg.toFixed(1)}
+          </LegendItem>
+        </LegendRow>
+      )}
       <SimpleTooltip
         data={
           tooltip
