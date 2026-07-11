@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import * as d3 from "d3";
 import styled from "styled-components";
@@ -184,6 +184,7 @@ export default function HrvAnalysisChart({
   const hasInitScrolled = useRef(false);
   const topAxisRef = useRef<SVGGElement>(null);
   const bottomAxisRef = useRef<SVGGElement>(null);
+  const gradientId = useId().replace(/:/g, "");
   const [tooltip, setTooltip] = useState<{ x: number; y: number; date: Date; value: number } | null>(
     null
   );
@@ -296,6 +297,17 @@ export default function HrvAnalysisChart({
         .y((p) => yScale(p.value))
         .defined((p, i, arr) => i === 0 || p.date.getTime() - arr[i - 1].date.getTime() <= GAP_THRESHOLD_MS),
     [xScale, yScale]
+  );
+
+  const areaGenerator = useMemo(
+    () =>
+      d3
+        .area<{ date: Date; value: number }>()
+        .x((p) => xScale(p.date))
+        .y0(innerHeight)
+        .y1((p) => yScale(p.value))
+        .defined((p, i, arr) => i === 0 || p.date.getTime() - arr[i - 1].date.getTime() <= GAP_THRESHOLD_MS),
+    [xScale, yScale, innerHeight]
   );
 
   const bisectDate = useMemo(() => d3.bisector((p: { date: Date }) => p.date).left, []);
@@ -450,9 +462,16 @@ export default function HrvAnalysisChart({
             <g transform={`translate(0, ${MARGIN.top})`}>
               {showHrv && (
                 <>
+                  <defs>
+                    <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2={innerHeight} gradientUnits="userSpaceOnUse">
+                      <stop offset="0%" stopColor={color} stopOpacity={0.3} />
+                      <stop offset="100%" stopColor={color} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
                   {yTicks.map((t) => (
                     <line key={t} x1={0} x2={innerWidth} y1={yScale(t)} y2={yScale(t)} stroke="#e4e4e7" />
                   ))}
+                  <path d={areaGenerator(points) ?? undefined} fill={`url(#${gradientId})`} stroke="none" />
                   <path d={lineGenerator(points) ?? undefined} fill="none" stroke={color} strokeWidth={1.5} />
                   {showPoints &&
                     points.map((p, i) => (
