@@ -124,7 +124,7 @@ const AvgLabel = styled.div`
   padding: 1px 5px;
   pointer-events: none;
   white-space: nowrap;
-  transform: translateY(-100%);
+  transform: translateY(calc(-100% - 4px));
 `;
 
 // 간트 레인 제목도 y축 숫자와 같은 방식(sticky)으로 왼쪽에 고정
