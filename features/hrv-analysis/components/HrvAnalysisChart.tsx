@@ -47,7 +47,7 @@ interface Props {
   moodData?: MoodPoint[];
 }
 
-type SeriesKind = "line" | "gantt" | "emoji" | "dot" | "mood";
+type SeriesKind = "line" | "gantt" | "dot" | "mood";
 
 interface SeriesDef {
   key: string;
@@ -255,7 +255,7 @@ export default function HrvAnalysisChart({
     const list: SeriesDef[] = [{ key: "hrv", label: "심박변이", color, kind: "line" }];
     if (sleepRanges) list.push({ key: "sleep", label: "수면", color: "#6366f1", kind: "gantt" });
     if (exerciseRanges) list.push({ key: "exercise", label: "운동", color: "#f97316", kind: "gantt" });
-    if (coffeeTimes) list.push({ key: "coffee", label: "커피", color: "#92400e", kind: "emoji" });
+    if (coffeeTimes) list.push({ key: "coffee", label: "커피", color: "#92400e", kind: "dot" });
     if (examTimes) list.push({ key: "exam", label: "검사", color: "#dc2626", kind: "dot" });
     if (moodData) list.push({ key: "mood", label: "기분", color: "#f59e0b", kind: "mood" });
     return list;
@@ -663,25 +663,6 @@ export default function HrvAnalysisChart({
                         />
                       );
                     })}
-                  {lane.kind === "emoji" &&
-                    lane.times.map((t, ti) => {
-                      const d = new Date(t);
-                      if (isNaN(d.getTime())) return null;
-                      const x = xScale(d);
-                      if (x < 0 || x > innerWidth) return null;
-                      return (
-                        <text
-                          key={ti}
-                          x={x}
-                          y={lane.y + LANE_HEIGHT / 2}
-                          textAnchor="middle"
-                          dominantBaseline="central"
-                          fontSize={14}
-                        >
-                          ☕
-                        </text>
-                      );
-                    })}
                   {lane.kind === "dot" &&
                     lane.times.map((t, ti) => {
                       const d = new Date(t);
@@ -730,7 +711,7 @@ export default function HrvAnalysisChart({
             $active={!hiddenKeys.has(s.key)}
             onClick={() => toggleSeries(s.key)}
           >
-            {s.kind === "emoji" ? <span aria-hidden>☕</span> : <LegendDot style={{ background: s.color }} />}
+            <LegendDot style={{ background: s.color }} />
             {s.label}
           </LegendItem>
         ))}
