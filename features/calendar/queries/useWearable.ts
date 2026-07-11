@@ -6,6 +6,8 @@ export interface WearableRecord {
   id: string;
   date: string;
   sleepDuration?: number;
+  sleepStart?: string;
+  sleepEnd?: string;
   sleepQuality?: number;
   heartRate?: number;
   heartRateVariability?: number;
