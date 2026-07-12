@@ -3,9 +3,7 @@ import { useAuthedFetch } from "@/features/shared/lib/authFetch";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001";
 
-export type EventType =
-  | "FRIEND_MEETING" | "CONCERT" | "RELATIONSHIP_STRESS"
-  | "CONFLICT" | "EXERCISE" | "HOBBY" | "OTHER";
+export type EventType = "MEDICATION_CHANGE" | "RELATIONSHIP_ISSUE" | "WORK_STRESS" | "OTHER";
 
 export type Sentiment = "POSITIVE" | "NEGATIVE" | "NEUTRAL";
 
@@ -14,8 +12,8 @@ export interface EventPayload {
   type: EventType;
   title: string;
   description?: string;
-  sentiment: Sentiment;
-  intensity: number;
+  sentiment?: Sentiment;
+  intensity?: number;
 }
 
 export function useCreateEvent() {

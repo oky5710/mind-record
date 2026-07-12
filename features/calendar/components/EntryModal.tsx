@@ -1,16 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import BottomSheet from "@/features/shared/components/BottomSheet";
 import ExamForm, { type ExamFormData } from "./forms/ExamForm";
 import ExerciseForm, { type ExerciseFormData } from "./forms/ExerciseForm";
 import CoffeeForm, { type CoffeeFormData } from "./forms/CoffeeForm";
 import MoodForm, { type MoodFormData } from "./forms/MoodForm";
+import EventForm, { type EventFormData, EVENT_TYPE_LABELS } from "./forms/EventForm";
 import { useCreateHrv, type HrvPayload } from "@/features/calendar/queries/useHrv";
 import { useCreateExercise } from "@/features/calendar/queries/useExercise";
 import { useCreateCoffee } from "@/features/calendar/queries/useCoffee";
 import { useCreateMood } from "@/features/calendar/queries/useMood";
+import { useCreateEvent } from "@/features/calendar/queries/useEvents";
 
 type EntryType = "검사" | "운동" | "커피" | "기분" | "이벤트";
 
@@ -49,6 +50,7 @@ export default function EntryModal({ date, onClose }: Props) {
   const { mutateAsync: createExercise, isPending: exercisePending, error: exerciseError } = useCreateExercise();
   const { mutateAsync: createCoffee, isPending: coffeePending, error: coffeeError } = useCreateCoffee();
   const { mutateAsync: createMood, isPending: moodPending, error: moodError } = useCreateMood();
+  const { mutateAsync: createEvent, isPending: eventPending, error: eventError } = useCreateEvent();
 
   function handleOpenChange(open: boolean) {
     if (!open) onClose();
@@ -85,6 +87,18 @@ export default function EntryModal({ date, onClose }: Props) {
       date: dateObj.toISOString(),
       ...(type ? { type } : {}),
       ...(data.memo ? { memo: data.memo } : {}),
+    });
+    onClose();
+  }
+
+  async function handleEventSubmit(data: EventFormData) {
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    const title = data.type === "OTHER" ? data.customTitle : EVENT_TYPE_LABELS[data.type];
+    await createEvent({
+      date: dateStr,
+      type: data.type,
+      title,
+      ...(data.description ? { description: data.description } : {}),
     });
     onClose();
   }
@@ -150,14 +164,12 @@ export default function EntryModal({ date, onClose }: Props) {
             />
           )}
           {selected === "이벤트" && (
-            <>
-              <div className="rounded-xl bg-muted border border-border p-5 text-center text-sm text-muted-foreground">
-                이벤트 입력 폼 — 추후 구현 예정
-              </div>
-              <Button variant="outline" className="mt-5 w-full" onClick={onClose}>
-                닫기
-              </Button>
-            </>
+            <EventForm
+              onSubmit={handleEventSubmit}
+              onCancel={onClose}
+              isPending={eventPending}
+              error={eventError?.message ?? null}
+            />
           )}
         </div>
       )}
