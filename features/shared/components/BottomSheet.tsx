@@ -30,7 +30,7 @@ export default function BottomSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="rounded-t-2xl max-w-md mx-auto p-0 flex flex-col"
+        className="rounded-t-2xl max-w-md lg:max-w-xl mx-auto p-0 flex flex-col"
         style={{ maxHeight }}
       >
         {/* 고정 헤더 */}

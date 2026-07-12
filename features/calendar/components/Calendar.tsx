@@ -177,7 +177,7 @@ export default function Calendar() {
   }
 
   return (
-    <div className="w-full max-w-md mx-auto select-none">
+    <div className="w-full max-w-md lg:max-w-4xl mx-auto select-none">
       <p className="text-sm text-muted-foreground px-4 pt-3">입력하고 싶은 날짜를 선택해주세요!</p>
       <div className="flex items-center justify-between px-4 py-2">
         <Button variant="ghost" size="icon" onClick={prevMonth} aria-label="이전 달">‹</Button>

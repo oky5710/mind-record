@@ -97,7 +97,7 @@ export default function HrvAnalysisPage() {
   return (
     <div className="min-h-dvh flex flex-col bg-background">
       <Navigation />
-      <div className="flex-1 max-w-md mx-auto w-full px-4 py-4">
+      <div className="flex-1 max-w-md lg:max-w-4xl mx-auto w-full px-4 py-4">
         <p className="text-sm text-muted-foreground mb-3">
           애플워치로 측정된 심박변이(HRV SDNN)를 약 2시간 간격으로 표시합니다.
         </p>

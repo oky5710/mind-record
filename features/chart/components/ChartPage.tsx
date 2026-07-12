@@ -58,7 +58,7 @@ export default function ChartPage() {
   return (
     <div className="min-h-dvh flex flex-col bg-background">
       <Navigation />
-      <div className="flex-1 max-w-md mx-auto w-full px-4 py-4">
+      <div className="flex-1 max-w-md lg:max-w-4xl mx-auto w-full px-4 py-4">
         {isLoading && (
           <p className="text-sm text-muted-foreground text-center py-10">불러오는 중...</p>
         )}

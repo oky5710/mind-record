@@ -39,7 +39,7 @@ export default function SettingsPage() {
   return (
     <div className="min-h-dvh flex flex-col bg-background">
       <Navigation />
-      <div className="flex-1 max-w-md mx-auto w-full px-4 py-6 flex flex-col gap-4">
+      <div className="flex-1 max-w-md lg:max-w-4xl mx-auto w-full px-4 py-6 flex flex-col gap-4">
         <div>
           <h1 className="text-lg font-bold">자동화(단축어) 토큰</h1>
           <p className="text-sm text-muted-foreground mt-1">

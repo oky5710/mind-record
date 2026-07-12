@@ -270,7 +270,7 @@ export default function MedicinePage() {
   return (
     <div className="min-h-dvh flex flex-col bg-background">
       <Navigation />
-      <main className="flex-1 max-w-md mx-auto w-full px-4 py-4 flex flex-col gap-3 pb-28">
+      <main className="flex-1 max-w-md lg:max-w-4xl mx-auto w-full px-4 py-4 flex flex-col gap-3 pb-28">
         {isLoading && (
           <p className="text-sm text-muted-foreground text-center py-10">불러오는 중...</p>
         )}
@@ -289,7 +289,7 @@ export default function MedicinePage() {
         ))}
       </main>
 
-      <div className="fixed bottom-6 left-0 right-0 px-4 max-w-md mx-auto">
+      <div className="fixed bottom-6 left-0 right-0 px-4 max-w-md lg:max-w-4xl mx-auto">
         <Button className="w-full" onClick={() => setOpen(true)}>
           + 약 추가
         </Button>
