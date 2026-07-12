@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Navigation from "@/features/shared/components/Navigation";
+import LoadingIndicator from "@/features/shared/components/LoadingIndicator";
 import { Input } from "@/components/ui/input";
 import { useWearableSampleList } from "@/features/calendar/queries/useWearableSample";
 import { useWearableList } from "@/features/calendar/queries/useWearable";
@@ -152,9 +153,7 @@ export default function HrvAnalysisPage() {
           />
         </div>
 
-        {isLoading && (
-          <p className="text-sm text-muted-foreground text-center py-10">불러오는 중...</p>
-        )}
+        {isLoading && <LoadingIndicator />}
         {error && <p className="text-sm text-destructive text-center py-10">{error.message}</p>}
         {!isLoading && !error && mode === "day" && (
           <HrvAnalysisChart
