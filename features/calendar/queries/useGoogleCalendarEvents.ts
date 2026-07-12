@@ -11,6 +11,7 @@ export interface GoogleCalendarAttendee {
 export interface GoogleCalendarEvent {
   id: string;
   title: string;
+  location: string | null;
   start: string;
   end: string;
   allDay: boolean;

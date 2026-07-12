@@ -66,6 +66,7 @@ export async function GET(req: NextRequest) {
       return {
         id: e.id,
         title: e.summary ?? "(제목 없음)",
+        location: e.location ?? null,
         start: e.start.dateTime ?? e.start.date,
         end: e.end.dateTime ?? e.end.date,
         allDay: !e.start.dateTime,

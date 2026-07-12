@@ -8,10 +8,12 @@ const TooltipBox = styled.div<{ $x: number; $y: number }>`
   background: var(--foreground, #18181b);
   color: var(--background, #fff);
   font-size: 11px;
+  line-height: 1.5;
   padding: 6px 8px;
   border-radius: 6px;
   pointer-events: none;
-  white-space: nowrap;
+  white-space: pre-line;
+  max-width: 240px;
   z-index: 50;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
 `;

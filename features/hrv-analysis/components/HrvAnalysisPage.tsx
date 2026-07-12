@@ -82,6 +82,9 @@ export default function HrvAnalysisPage() {
         start: e.start,
         end: e.end,
         status: e.myResponseStatus,
+        title: e.title,
+        location: e.location,
+        attendees: e.attendees,
       })),
     [googleCalendarEvents]
   );

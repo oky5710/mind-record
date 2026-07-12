@@ -18,6 +18,12 @@ export interface GanttRange {
   end: string;
   /** 예: 구글 캘린더 일정의 내 수락 여부("accepted" | "declined" | "tentative" | "needsAction") */
   status?: string | null;
+  /** 구글 캘린더 일정 제목 */
+  title?: string;
+  /** 구글 캘린더 일정 장소 */
+  location?: string | null;
+  /** 구글 캘린더 일정 참석자 */
+  attendees?: { name?: string; email: string }[];
 }
 
 export interface MoodPoint {
@@ -212,6 +218,26 @@ function formatDurationHm(ms: number) {
   return `${h}시간 ${m}분`;
 }
 
+function formatGanttTooltipLabel(laneKey: string, r: GanttRange, start: Date, end: Date) {
+  const dateLabel = formatYmd(start);
+  const timeRange = `${formatTimeOfDay(start)} ~ ${formatTimeOfDay(end)}`;
+
+  if (laneKey === "sleep") {
+    return `${dateLabel} ${timeRange}\n${formatDurationHm(end.getTime() - start.getTime())} 수면`;
+  }
+
+  if (laneKey === "gcal") {
+    const lines = [r.title || "(제목 없음)", `${dateLabel} ${timeRange}`];
+    if (r.location) lines.push(r.location);
+    if (r.attendees && r.attendees.length > 0) {
+      lines.push(`참석자: ${r.attendees.map((a) => a.name || a.email).join(", ")}`);
+    }
+    return lines.join("\n");
+  }
+
+  return `${dateLabel} ${timeRange}`;
+}
+
 export default function HrvAnalysisChart({
   data,
   pxPerDay = 60,
@@ -249,6 +275,7 @@ export default function HrvAnalysisChart({
   const [tooltip, setTooltip] = useState<{ x: number; y: number; date: Date; value: number } | null>(
     null
   );
+  const [ganttTooltip, setGanttTooltip] = useState<{ x: number; y: number; label: string } | null>(null);
   const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(new Set());
 
   function toggleSeries(key: string) {
@@ -590,6 +617,7 @@ export default function HrvAnalysisChart({
   const EDGE_TRIGGER_COOLDOWN_MS = 3000;
   function handleScroll(e: ReactUIEvent<HTMLDivElement>) {
     setTooltip(null);
+    setGanttTooltip(null);
     if (!onScrollNearEdge) return;
     const el = e.currentTarget as HTMLDivElement;
     const nearStart = el.scrollLeft < EDGE_THRESHOLD_PX;
@@ -642,6 +670,19 @@ export default function HrvAnalysisChart({
     const svg = e.currentTarget.ownerSVGElement;
     if (!svg) return;
     updateTooltipAt(svg, e.clientX, e.clientY);
+  }
+
+  function handleGanttPointerMove(e: ReactPointerEvent<SVGElement>, label: string) {
+    if (e.pointerType !== "mouse") return;
+    setGanttTooltip({ x: e.clientX, y: e.clientY, label });
+  }
+
+  function handleGanttPointerLeave(e: ReactPointerEvent) {
+    if (e.pointerType === "mouse") setGanttTooltip(null);
+  }
+
+  function handleGanttClick(e: ReactMouseEvent<SVGElement>, label: string) {
+    setGanttTooltip((prev) => (prev?.label === label ? null : { x: e.clientX, y: e.clientY, label }));
   }
 
   if (allTimestamps.length === 0) {
@@ -815,6 +856,7 @@ export default function HrvAnalysisChart({
                       const isNeedsAction = r.status === "needsAction";
                       // 수면/운동/구글 캘린더는 서로 시간이 겹치지 않으므로 블렌딩용 투명도를 따로 두지 않음
                       const baseOpacity = 0.85;
+                      const tooltipLabel = formatGanttTooltipLabel(lane.key, r, start, end);
                       return (
                         <g key={ri}>
                           <rect
@@ -828,6 +870,10 @@ export default function HrvAnalysisChart({
                             stroke={isTentative || isNeedsAction ? lane.color : "none"}
                             strokeWidth={isTentative || isNeedsAction ? 1.5 : 0}
                             strokeDasharray={isTentative ? "3 2" : undefined}
+                            style={{ cursor: "pointer" }}
+                            onPointerMove={(e) => handleGanttPointerMove(e, tooltipLabel)}
+                            onPointerLeave={handleGanttPointerLeave}
+                            onClick={(e) => handleGanttClick(e, tooltipLabel)}
                           />
                           {lane.key === "sleep" && (
                             <text
@@ -953,6 +999,7 @@ export default function HrvAnalysisChart({
             : null
         }
       />
+      <SimpleTooltip data={ganttTooltip} />
     </ChartWrapper>
   );
 }
