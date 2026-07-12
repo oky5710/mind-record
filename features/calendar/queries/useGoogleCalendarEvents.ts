@@ -1,12 +1,20 @@
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 
+export interface GoogleCalendarAttendee {
+  email: string;
+  name?: string;
+  responseStatus?: string;
+  organizer: boolean;
+}
+
 export interface GoogleCalendarEvent {
   id: string;
   title: string;
   start: string;
   end: string;
   allDay: boolean;
+  attendees: GoogleCalendarAttendee[];
 }
 
 export function useGoogleCalendarEvents(from: string, to: string) {

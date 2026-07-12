@@ -52,7 +52,15 @@ export async function GET(req: NextRequest) {
       start: e.start.dateTime ?? e.start.date,
       end: e.end.dateTime ?? e.end.date,
       allDay: !e.start.dateTime,
+      attendees: (e.attendees ?? []).map((a: any) => ({
+        email: a.email,
+        name: a.displayName,
+        responseStatus: a.responseStatus,
+        organizer: !!a.organizer,
+      })),
     }))
+    // 종일 일정은 간트 차트에서 제외
+    .filter((e) => !e.allDay)
     // 최신순으로 정렬해서 반환
     .sort((a, b) => new Date(b.start).getTime() - new Date(a.start).getTime());
 
