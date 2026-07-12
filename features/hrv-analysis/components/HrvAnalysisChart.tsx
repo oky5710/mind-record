@@ -205,6 +205,13 @@ function formatTimeOfDay(d: Date) {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
+function formatDurationHm(ms: number) {
+  const totalMinutes = Math.round(ms / 60000);
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  return `${h}시간 ${m}분`;
+}
+
 export default function HrvAnalysisChart({
   data,
   pxPerDay = 60,
@@ -809,19 +816,33 @@ export default function HrvAnalysisChart({
                       // 수면/운동/구글 캘린더는 서로 시간이 겹치지 않으므로 블렌딩용 투명도를 따로 두지 않음
                       const baseOpacity = 0.85;
                       return (
-                        <rect
-                          key={ri}
-                          x={x1}
-                          y={lane.y + 3}
-                          width={w}
-                          height={lane.height - 6}
-                          rx={4}
-                          fill={lane.color}
-                          opacity={isDeclined ? 0.15 : isNeedsAction ? 0.35 : baseOpacity}
-                          stroke={isTentative || isNeedsAction ? lane.color : "none"}
-                          strokeWidth={isTentative || isNeedsAction ? 1.5 : 0}
-                          strokeDasharray={isTentative ? "3 2" : undefined}
-                        />
+                        <g key={ri}>
+                          <rect
+                            x={x1}
+                            y={lane.y + 3}
+                            width={w}
+                            height={lane.height - 6}
+                            rx={4}
+                            fill={lane.color}
+                            opacity={isDeclined ? 0.15 : isNeedsAction ? 0.35 : baseOpacity}
+                            stroke={isTentative || isNeedsAction ? lane.color : "none"}
+                            strokeWidth={isTentative || isNeedsAction ? 1.5 : 0}
+                            strokeDasharray={isTentative ? "3 2" : undefined}
+                          />
+                          {lane.key === "sleep" && (
+                            <text
+                              x={x1 + 4}
+                              y={lane.y + 3 + 4}
+                              fontSize={11}
+                              fontWeight={700}
+                              fill="#fff"
+                              textAnchor="start"
+                              dominantBaseline="hanging"
+                            >
+                              {formatDurationHm(end.getTime() - start.getTime())}
+                            </text>
+                          )}
+                        </g>
                       );
                     })}
                 </g>
