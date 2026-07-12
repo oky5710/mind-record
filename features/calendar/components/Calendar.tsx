@@ -61,8 +61,12 @@ function ExerciseDetailSheet({ record, onClose }: { record: ExerciseRecord; onCl
         {[
           { label: "종류", value: record.type },
           { label: "시간", value: `${record.durationMinutes}분` },
-          { label: "강도", value: `${record.intensity} (${intensityLabels[record.intensity]})` },
-        ].map(({ label, value }) => (
+          record.intensity != null
+            ? { label: "강도", value: `${record.intensity} (${intensityLabels[record.intensity]})` }
+            : undefined,
+        ]
+          .filter((row) => row !== undefined)
+          .map(({ label, value }) => (
           <div key={label} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
             <span className="text-sm text-muted-foreground">{label}</span>
             <span className="text-sm font-medium">{value}</span>

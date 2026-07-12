@@ -12,8 +12,10 @@ export interface ExercisePayload {
   endedAt?: string;
 }
 
-export interface ExerciseRecord extends ExercisePayload {
+export interface ExerciseRecord extends Omit<ExercisePayload, "intensity"> {
   id: string;
+  // 단축어 자동화로 들어온 기록은 강도가 없을 수 있음
+  intensity: number | null;
   createdAt: string;
   updatedAt: string;
 }
