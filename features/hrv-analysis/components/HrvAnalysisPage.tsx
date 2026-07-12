@@ -9,6 +9,7 @@ import { useExerciseList } from "@/features/calendar/queries/useExercise";
 import { useCoffeeList } from "@/features/calendar/queries/useCoffee";
 import { useHrvList } from "@/features/calendar/queries/useHrv";
 import { useMoodList } from "@/features/calendar/queries/useMood";
+import { useGoogleCalendarEvents } from "@/features/calendar/queries/useGoogleCalendarEvents";
 import HrvAnalysisChart from "./HrvAnalysisChart";
 import QueryBuilderIcon from '@mui/icons-material/QueryBuilder';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
@@ -23,6 +24,7 @@ export default function HrvAnalysisPage() {
   const { data: coffeeData } = useCoffeeList();
   const { data: hrvExamData } = useHrvList();
   const { data: moodData } = useMoodList();
+  const { data: googleCalendarEvents } = useGoogleCalendarEvents("2020-01-01", "2027-01-01");
   const [mode, setMode] = useState<ViewMode>("hour");
   const [jumpDate, setJumpDate] = useState<string | null>(null);
 
@@ -49,6 +51,11 @@ export default function HrvAnalysisPage() {
   const moodPoints = useMemo(
     () => (moodData ?? []).map((m) => ({ date: m.date, score: m.score })),
     [moodData]
+  );
+
+  const googleCalendarRanges = useMemo(
+    () => (googleCalendarEvents ?? []).map((e) => ({ start: e.start, end: e.end })),
+    [googleCalendarEvents]
   );
 
   const examSdnnPoints = useMemo(
@@ -131,6 +138,7 @@ export default function HrvAnalysisPage() {
             showPoints
             sleepRanges={sleepRanges}
             exerciseRanges={exerciseRanges}
+            googleCalendarRanges={googleCalendarRanges}
             coffeeTimes={coffeeTimes}
             examTimes={examTimes}
             moodData={moodPoints}
@@ -147,6 +155,7 @@ export default function HrvAnalysisPage() {
             jumpToDate={jumpDate}
             sleepRanges={sleepRanges}
             exerciseRanges={exerciseRanges}
+            googleCalendarRanges={googleCalendarRanges}
             coffeeTimes={coffeeTimes}
             examTimes={examTimes}
             moodData={moodPoints}
@@ -166,6 +175,7 @@ export default function HrvAnalysisPage() {
             }}
             sleepRanges={sleepRanges}
             exerciseRanges={exerciseRanges}
+            googleCalendarRanges={googleCalendarRanges}
             coffeeTimes={coffeeTimes}
             examTimes={examTimes}
             moodData={moodPoints}

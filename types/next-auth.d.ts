@@ -4,11 +4,16 @@ import "next-auth/jwt";
 declare module "next-auth" {
   interface Session {
     backendToken?: string;
+    googleAccessToken?: string;
   }
 }
 
 declare module "next-auth/jwt" {
   interface JWT {
     backendToken?: string;
+    googleAccessToken?: string;
+    googleRefreshToken?: string;
+    googleAccessTokenExpires?: number;
+    googleError?: string;
   }
 }

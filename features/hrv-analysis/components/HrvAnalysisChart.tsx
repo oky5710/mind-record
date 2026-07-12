@@ -39,6 +39,8 @@ interface Props {
   sleepRanges?: GanttRange[];
   /** 같은 시간 축 아래에 운동 구간을 간트 차트로 표시 */
   exerciseRanges?: GanttRange[];
+  /** 같은 시간 축 아래에 구글 캘린더 일정 구간을 간트 차트로 표시 */
+  googleCalendarRanges?: GanttRange[];
   /** 같은 시간 축 위에 커피 마신 시각을 이모티콘으로 표시 */
   coffeeTimes?: string[];
   /** 같은 시간 축 위에 검사 받은 시각을 점으로 표시 */
@@ -218,6 +220,7 @@ export default function HrvAnalysisChart({
   jumpToDate,
   sleepRanges,
   exerciseRanges,
+  googleCalendarRanges,
   coffeeTimes,
   examTimes,
   moodData,
@@ -257,11 +260,12 @@ export default function HrvAnalysisChart({
     const list: SeriesDef[] = [{ key: "hrv", label: "심박변이", color, kind: "line" }];
     if (sleepRanges) list.push({ key: "sleep", label: "수면", color: "#6366f1", kind: "gantt" });
     if (exerciseRanges) list.push({ key: "exercise", label: "운동", color: "#f97316", kind: "gantt" });
+    if (googleCalendarRanges) list.push({ key: "gcal", label: "구글 캘린더", color: "#3b82f6", kind: "gantt" });
     if (coffeeTimes) list.push({ key: "coffee", label: "커피", color: "#92400e", kind: "dot" });
     if (examTimes) list.push({ key: "exam", label: "검사", color: "#dc2626", kind: "dot" });
     if (moodData) list.push({ key: "mood", label: "기분", color: "#f59e0b", kind: "mood" });
     return list;
-  }, [color, sleepRanges, exerciseRanges, coffeeTimes, examTimes, moodData]);
+  }, [color, sleepRanges, exerciseRanges, googleCalendarRanges, coffeeTimes, examTimes, moodData]);
 
   const moodColorScale = useMemo(
     () => d3.scaleLinear<string>().domain([1, 3, 5]).range(["#ef4444", "#f59e0b", "#22c55e"]).clamp(true),
@@ -279,7 +283,14 @@ export default function HrvAnalysisChart({
       return {
         ...s,
         y,
-        ranges: s.key === "sleep" ? sleepRanges ?? [] : s.key === "exercise" ? exerciseRanges ?? [] : [],
+        ranges:
+          s.key === "sleep"
+            ? sleepRanges ?? []
+            : s.key === "exercise"
+              ? exerciseRanges ?? []
+              : s.key === "gcal"
+                ? googleCalendarRanges ?? []
+                : [],
         times: s.key === "coffee" ? coffeeTimes ?? [] : s.key === "exam" ? examTimes ?? [] : [],
         moodPoints: s.key === "mood" ? moodData ?? [] : [],
       };
@@ -291,6 +302,7 @@ export default function HrvAnalysisChart({
     innerHeight,
     sleepRanges,
     exerciseRanges,
+    googleCalendarRanges,
     coffeeTimes,
     examTimes,
     moodData,
@@ -311,11 +323,14 @@ export default function HrvAnalysisChart({
     (exerciseRanges ?? []).forEach((r) => {
       arr.push(new Date(r.start).getTime(), new Date(r.end).getTime());
     });
+    (googleCalendarRanges ?? []).forEach((r) => {
+      arr.push(new Date(r.start).getTime(), new Date(r.end).getTime());
+    });
     (coffeeTimes ?? []).forEach((t) => arr.push(new Date(t).getTime()));
     (examTimes ?? []).forEach((t) => arr.push(new Date(t).getTime()));
     (moodData ?? []).forEach((m) => arr.push(new Date(`${m.date.slice(0, 10)}T00:00:00`).getTime()));
     return arr.filter((t) => !isNaN(t)).sort((a, b) => a - b);
-  }, [data, sleepRanges, exerciseRanges, coffeeTimes, examTimes, moodData]);
+  }, [data, sleepRanges, exerciseRanges, googleCalendarRanges, coffeeTimes, examTimes, moodData]);
 
   const [minDate, maxDate] = useMemo(() => {
     if (allTimestamps.length === 0) {
