@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuthedFetch } from "@/features/shared/lib/authFetch";
 
 const BASE_URL = "http://localhost:3001";
 
@@ -17,33 +18,32 @@ export interface ExerciseRecord extends ExercisePayload {
   updatedAt: string;
 }
 
-async function fetchExercises(): Promise<ExerciseRecord[]> {
-  const res = await fetch(`${BASE_URL}/exercises`);
-  if (!res.ok) throw new Error("운동 목록 조회 실패");
-  return res.json();
-}
-
 export function useExerciseList() {
+  const { authedFetch, token, isReady } = useAuthedFetch();
   return useQuery({
     queryKey: ["exercises"],
-    queryFn: fetchExercises,
+    queryFn: async (): Promise<ExerciseRecord[]> => {
+      const res = await authedFetch(`${BASE_URL}/exercises`);
+      if (!res.ok) throw new Error("운동 목록 조회 실패");
+      return res.json();
+    },
+    enabled: isReady && !!token,
   });
-}
-
-async function createExercise(payload: ExercisePayload) {
-  const res = await fetch(`${BASE_URL}/exercises`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error("운동 기록 저장 실패");
-  return res.json();
 }
 
 export function useCreateExercise() {
+  const { authedFetch } = useAuthedFetch();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: createExercise,
+    mutationFn: async (payload: ExercisePayload) => {
+      const res = await authedFetch(`${BASE_URL}/exercises`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("운동 기록 저장 실패");
+      return res.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["exercises"] });
     },

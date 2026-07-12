@@ -68,6 +68,11 @@ lib/
 | 변수명 | 설명 |
 |---|---|
 | `NEXT_PUBLIC_PIXABAY_API_KEY` | Pixabay API 키 (클라이언트에서 직접 호출) |
+| `AUTH_SECRET` | NextAuth(Auth.js) 세션/JWT 암호화 키 |
+| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Google OAuth Client (Google Cloud Console에서 발급, redirect URI: `http://localhost:3000/api/auth/callback/google`) |
+| `BACKEND_URL` | NextAuth 서버사이드 콜백에서 백엔드 호출 시 사용 (`http://localhost:3001`) |
+
+백엔드(`mind-chart-backend`)의 `.env`에도 프론트와 **동일한 Google Client ID**를 `GOOGLE_CLIENT_ID`로 설정해야 함 (idToken 검증 시 audience로 사용).
 
 ## 주요 기능
 
@@ -175,7 +180,15 @@ React Hook Form(`useForm`) 사용.
 
 * `WearableData`: 하루 1건, 일별 요약값 (평균 심박수, HRV, 수면시간 등) — `@@unique([userId, date])`
 * `WearableSample`: 타임스탬프별 다건 기록용 (예: 애플워치 HRV는 하루 약 2시간 간격으로 여러 번 측정됨) — `type` + `timestamp` + `value`, `POST /wearable-samples/bulk`로 일괄 저장, `GET /wearable-samples?type=...`으로 조회
-* 두 모델 다 `userId`는 nullable — 인증 붙기 전까지는 항상 null
+* 두 모델 다 `userId`는 nullable이지만, 인증 도입 이후로는 로그인한 사용자의 실제 id가 항상 채워짐
+
+## 인증 (Google 로그인)
+
+* **프론트**: NextAuth.js(Auth.js v5) — `auth.ts`(루트)에 Google Provider 설정. 로그인 안 한 상태로 접근하면 `middleware.ts`가 `/login`으로 리다이렉트 (`/login`, `/api/auth/*`는 예외)
+* **브릿지**: NextAuth의 `jwt` 콜백에서 최초 로그인 시 Google이 내려준 `account.id_token`을 백엔드 `POST /auth/google`에 전달 → 백엔드가 `google-auth-library`로 idToken을 직접 검증하고(공유 비밀키 방식이 아님), 기존 `AuthService`가 이메일/비밀번호 로그인 때 쓰던 것과 동일한 형식의 JWT(`{ sub, email }`)를 발급 → 이 토큰을 `session.backendToken`에 실어 프론트로 전달
+* **API 호출**: 프론트의 모든 쿼리 훅은 `features/shared/lib/authFetch.ts`의 `useAuthedFetch()`로 `Authorization: Bearer <backendToken>` 헤더를 붙여서 호출 (새 쿼리 파일을 추가할 때도 반드시 이 훅을 통해서 fetch할 것). `useQuery`는 `enabled: isReady && !!token`으로 토큰이 준비되기 전에는 요청하지 않도록 함
+* **백엔드**: `JwtAuthGuard`가 `APP_GUARD`로 전역 등록되어 있어 기본적으로 모든 라우트가 인증 필요. 예외는 `@Public()` 데코레이터로 표시 (`auth/register`, `auth/login`, `auth/google`, 그리고 공용 참조 데이터인 `DrugController` 전체). 컨트롤러에서 로그인한 사용자 정보는 `@CurrentUser() user: CurrentUserPayload`로 꺼내 씀 (`src/auth/current-user.decorator.ts`)
+* 새 리소스(모델)를 추가할 때는 반드시 `userId` 필드를 넣고, 서비스의 조회/생성 로직에 `@CurrentUser()`로 받은 `user.id`를 스코프로 사용할 것 — 이걸 빠뜨리면 다른 사용자의 데이터가 섞여 보임
 
 ## 규칙
 

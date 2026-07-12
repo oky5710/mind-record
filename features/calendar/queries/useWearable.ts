@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useAuthedFetch } from "@/features/shared/lib/authFetch";
 
 const BASE_URL = "http://localhost:3001";
 
@@ -14,15 +15,15 @@ export interface WearableRecord {
   createdAt: string;
 }
 
-async function fetchWearableList(): Promise<WearableRecord[]> {
-  const res = await fetch(`${BASE_URL}/wearable`);
-  if (!res.ok) throw new Error("웨어러블 데이터 조회 실패");
-  return res.json();
-}
-
 export function useWearableList() {
+  const { authedFetch, token, isReady } = useAuthedFetch();
   return useQuery({
     queryKey: ["wearable"],
-    queryFn: fetchWearableList,
+    queryFn: async (): Promise<WearableRecord[]> => {
+      const res = await authedFetch(`${BASE_URL}/wearable`);
+      if (!res.ok) throw new Error("웨어러블 데이터 조회 실패");
+      return res.json();
+    },
+    enabled: isReady && !!token,
   });
 }

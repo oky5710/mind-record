@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import QueryProvider from "@/features/shared/components/QueryProvider";
+import AuthSessionProvider from "@/features/shared/components/AuthSessionProvider";
 import StyledComponentsRegistry from "@/lib/styled-components-registry";
 
 const geistSans = Geist({
@@ -31,7 +32,9 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <StyledComponentsRegistry>
-          <QueryProvider>{children}</QueryProvider>
+          <AuthSessionProvider>
+            <QueryProvider>{children}</QueryProvider>
+          </AuthSessionProvider>
         </StyledComponentsRegistry>
       </body>
     </html>

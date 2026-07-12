@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
 
 const NAV_ITEMS = [
   { href: "/calendar", label: "입력하기" },
@@ -17,6 +18,7 @@ interface Props {
 
 export default function Navigation({ transparent = false }: Props) {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -65,6 +67,20 @@ export default function Navigation({ transparent = false }: Props) {
             </Link>
           );
         })}
+        {session && (
+          <button
+            type="button"
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className={[
+              "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
+              transparent
+                ? "text-white/90 hover:bg-white/20"
+                : "text-muted-foreground hover:bg-muted",
+            ].join(" ")}
+          >
+            로그아웃
+          </button>
+        )}
       </div>
 
       {/* 모바일 햄버거 버튼 */}
@@ -116,6 +132,20 @@ export default function Navigation({ transparent = false }: Props) {
               </Link>
             );
           })}
+          {session && (
+            <button
+              type="button"
+              onClick={() => signOut({ callbackUrl: "/login" })}
+              className={[
+                "px-4 py-2.5 rounded-lg text-sm font-medium text-left transition-colors",
+                transparent
+                  ? "text-white/90 hover:bg-white/20"
+                  : "text-muted-foreground hover:bg-muted",
+              ].join(" ")}
+            >
+              로그아웃
+            </button>
+          )}
         </div>
       )}
     </nav>
