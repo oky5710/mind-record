@@ -530,13 +530,13 @@ export default function HrvAnalysisChart({
     hasInitScrolled.current = true;
   }, [allTimestamps, innerWidth]);
 
-  // 날짜를 입력받으면 해당 날짜가 화면 중앙에 오도록 스크롤 이동
+  // 날짜를 입력받으면 해당 날짜가 화면 왼쪽 시작 지점에 오도록 스크롤 이동
   useLayoutEffect(() => {
     if (!jumpToDate) return;
     const el = scrollRef.current;
     if (!el) return;
     const targetX = xScale(new Date(`${jumpToDate}T00:00:00`));
-    el.scrollLeft = Math.max(0, targetX - el.clientWidth / 2);
+    el.scrollLeft = Math.max(0, targetX - 16);
   }, [jumpToDate, xScale]);
 
   function handlePointerDown(e: ReactPointerEvent<HTMLDivElement>) {
