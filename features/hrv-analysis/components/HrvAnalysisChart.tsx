@@ -51,6 +51,8 @@ interface Props {
   dailyMedian?: boolean;
   /** true면 라인 대신 월별 최소~최대 범위 막대 + 중앙값 선으로 그림 (월 단위 개요용) */
   monthlyRange?: boolean;
+  /** 월 단위 막대를 클릭했을 때 해당 월의 시작일(yyyy-MM-dd)을 전달 */
+  onMonthClick?: (date: string) => void;
 }
 
 type SeriesKind = "line" | "gantt" | "dot" | "mood";
@@ -222,6 +224,7 @@ export default function HrvAnalysisChart({
   examSdnnPoints,
   dailyMedian = false,
   monthlyRange = false,
+  onMonthClick,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
@@ -642,7 +645,18 @@ export default function HrvAnalysisChart({
                       const h = Math.max(1, yBottom - yTop);
                       const yMed = yScale(m.median);
                       return (
-                        <g key={i}>
+                        <g
+                          key={i}
+                          style={{ cursor: onMonthClick ? "pointer" : undefined }}
+                          onClick={() => onMonthClick?.(formatYmd(m.monthStart))}
+                        >
+                          <rect
+                            x={barX - 2}
+                            y={0}
+                            width={barW + 4}
+                            height={innerHeight}
+                            fill="transparent"
+                          />
                           <rect x={barX} y={yTop} width={barW} height={h} rx={6} fill={color} opacity={0.35} />
                           <line
                             x1={barX}
@@ -702,16 +716,18 @@ export default function HrvAnalysisChart({
                       />
                     );
                   })}
-                  <rect
-                    x={0}
-                    y={0}
-                    width={innerWidth}
-                    height={innerHeight}
-                    fill="transparent"
-                    onPointerMove={handleHoverMove}
-                    onPointerLeave={handleHoverLeave}
-                    onClick={handleHoverClick}
-                  />
+                  {!monthlyRange && (
+                    <rect
+                      x={0}
+                      y={0}
+                      width={innerWidth}
+                      height={innerHeight}
+                      fill="transparent"
+                      onPointerMove={handleHoverMove}
+                      onPointerLeave={handleHoverLeave}
+                      onClick={handleHoverClick}
+                    />
+                  )}
                   {tooltip !== null && (
                     <line
                       x1={xScale(tooltip.date)}

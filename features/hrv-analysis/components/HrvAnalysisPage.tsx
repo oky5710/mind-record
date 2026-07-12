@@ -160,6 +160,10 @@ export default function HrvAnalysisPage() {
             tickMode="date"
             jumpToDate={jumpDate}
             monthlyRange
+            onMonthClick={(date) => {
+              setMode("day");
+              setJumpDate(date);
+            }}
             sleepRanges={sleepRanges}
             exerciseRanges={exerciseRanges}
             coffeeTimes={coffeeTimes}
