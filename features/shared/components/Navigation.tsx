@@ -42,7 +42,7 @@ export default function Navigation({ transparent = false }: Props) {
           transparent ? "text-white drop-shadow" : "text-foreground",
         ].join(" ")}
       >
-        Mind Chart
+        Mind Profiler
       </Link>
 
       {/* 데스크톱 네비게이션 */}

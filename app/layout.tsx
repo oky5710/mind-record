@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Mind Chart",
+  title: "Mind Profilert",
   description: "정신건강을 기록하는 앱",
 };
 
