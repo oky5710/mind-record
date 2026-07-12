@@ -119,30 +119,6 @@ const YTickLabel = styled.div`
   transform: translateY(calc(-100% - 4px));
 `;
 
-// 간트 레인 제목도 y축 숫자와 같은 방식(sticky)으로 왼쪽에 고정
-const LaneLabelRow = styled.div`
-  position: absolute;
-  left: 0;
-  width: 100%;
-  height: 0;
-`;
-
-const LaneLabel = styled.div`
-  position: sticky;
-  left: 4px;
-  display: inline-block;
-  vertical-align: top;
-  width: fit-content;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--foreground, #18181b);
-  background: rgba(255, 255, 255, 0.2);
-  padding: 1px 4px;
-  pointer-events: none;
-  white-space: nowrap;
-  transform: translateY(-50%);
-`;
-
 const LegendRow = styled.div`
   display: flex;
   flex-wrap: wrap;
@@ -667,13 +643,6 @@ export default function HrvAnalysisChart({
               <YTickRow key={t} style={{ top: MARGIN.top + yScale(t) }}>
                 <YTickLabel>{t}</YTickLabel>
               </YTickRow>
-            ))}
-          {lanes
-            .filter((lane) => !lane.isMerged || lane.isFirstOfMergedGroup)
-            .map((lane) => (
-              <LaneLabelRow key={lane.key} style={{ top: MARGIN.top + lane.y + lane.height / 2 }}>
-                <LaneLabel>{lane.label}</LaneLabel>
-              </LaneLabelRow>
             ))}
           <svg width={scrollableWidth} height={totalHeight} style={{ display: "block" }}>
             <g transform={`translate(0, ${MARGIN.top})`}>
