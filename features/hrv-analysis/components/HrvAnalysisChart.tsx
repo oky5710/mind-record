@@ -281,32 +281,71 @@ export default function HrvAnalysisChart({
 
   const showHrv = !hiddenKeys.has("hrv");
 
+  // 수면/운동/구글 캘린더는 한 레인에 완전히 겹쳐서 보여줌 (색만 다르게 유지, y는 전부 동일).
+  // 이 통합 레인의 높이는 일반 레인의 2배
+  const MERGED_LANE_KEYS = useMemo(() => new Set(["sleep", "exercise", "gcal"]), []);
+  const MERGED_LANE_HEIGHT = LANE_HEIGHT * 2;
+
   const lanes = useMemo(() => {
     const visible = seriesDefs.filter((s) => s.kind !== "line" && !hiddenKeys.has(s.key));
+    const visibleMerged = visible.filter((s) => MERGED_LANE_KEYS.has(s.key));
+    const visibleOthers = visible.filter((s) => !MERGED_LANE_KEYS.has(s.key));
+
     let cursor = showHrv ? innerHeight : 0;
-    return visible.map((s) => {
+    const result: Array<
+      SeriesDef & {
+        y: number;
+        height: number;
+        isMerged: boolean;
+        isFirstOfMergedGroup: boolean;
+        ranges: GanttRange[];
+        times: string[];
+        moodPoints: MoodPoint[];
+      }
+    > = [];
+
+    if (visibleMerged.length > 0) {
+      const mergedY = cursor;
+      const combinedLabel = visibleMerged.map((s) => s.label).join(" · ");
+      visibleMerged.forEach((s, idx) => {
+        result.push({
+          ...s,
+          y: mergedY,
+          height: MERGED_LANE_HEIGHT,
+          isMerged: true,
+          isFirstOfMergedGroup: idx === 0,
+          label: idx === 0 ? combinedLabel : s.label,
+          ranges:
+            s.key === "sleep" ? sleepRanges ?? [] : s.key === "exercise" ? exerciseRanges ?? [] : googleCalendarRanges ?? [],
+          times: [],
+          moodPoints: [],
+        });
+      });
+      cursor += MERGED_LANE_HEIGHT;
+    }
+
+    visibleOthers.forEach((s) => {
       const y = cursor;
       cursor += LANE_HEIGHT;
-      return {
+      result.push({
         ...s,
         y,
-        ranges:
-          s.key === "sleep"
-            ? sleepRanges ?? []
-            : s.key === "exercise"
-              ? exerciseRanges ?? []
-              : s.key === "gcal"
-                ? googleCalendarRanges ?? []
-                : [],
+        height: LANE_HEIGHT,
+        isMerged: false,
+        isFirstOfMergedGroup: false,
+        ranges: [],
         times: s.key === "coffee" ? coffeeTimes ?? [] : s.key === "exam" ? examTimes ?? [] : [],
         moodPoints: s.key === "mood" ? moodData ?? [] : [],
-      };
+      });
     });
+
+    return result;
   }, [
     seriesDefs,
     hiddenKeys,
     showHrv,
     innerHeight,
+    MERGED_LANE_KEYS,
     sleepRanges,
     exerciseRanges,
     googleCalendarRanges,
@@ -315,7 +354,11 @@ export default function HrvAnalysisChart({
     moodData,
   ]);
 
-  const ganttAreaHeight = lanes.length * LANE_HEIGHT;
+  const ganttAreaHeight = lanes.reduce((sum, l) => {
+    // 통합 레인은 그룹당 한 번만 높이를 더함(항목마다 중복 방지)
+    if (l.isMerged) return sum + (l.isFirstOfMergedGroup ? MERGED_LANE_HEIGHT : 0);
+    return sum + LANE_HEIGHT;
+  }, 0);
   const hrvBlockHeight = showHrv ? innerHeight : 0;
   const axisY = hrvBlockHeight + ganttAreaHeight;
   const totalHeight = MARGIN.top + hrvBlockHeight + ganttAreaHeight + MARGIN.bottom;
@@ -674,11 +717,13 @@ export default function HrvAnalysisChart({
                 <YTickLabel>{t}</YTickLabel>
               </YTickRow>
             ))}
-          {lanes.map((lane) => (
-            <LaneLabelRow key={lane.key} style={{ top: MARGIN.top + lane.y + LANE_HEIGHT / 2 }}>
-              <LaneLabel>{lane.label}</LaneLabel>
-            </LaneLabelRow>
-          ))}
+          {lanes
+            .filter((lane) => !lane.isMerged || lane.isFirstOfMergedGroup)
+            .map((lane) => (
+              <LaneLabelRow key={lane.key} style={{ top: MARGIN.top + lane.y + lane.height / 2 }}>
+                <LaneLabel>{lane.label}</LaneLabel>
+              </LaneLabelRow>
+            ))}
           <svg width={scrollableWidth} height={totalHeight} style={{ display: "block" }}>
             <g transform={`translate(0, ${MARGIN.top})`}>
               {dayGridlines.map((d, i) => (
@@ -809,7 +854,9 @@ export default function HrvAnalysisChart({
               )}
               {lanes.map((lane, i) => (
                 <g key={lane.key}>
-                  {i > 0 && <line x1={0} x2={innerWidth} y1={lane.y} y2={lane.y} stroke="#d4d4d8" />}
+                  {i > 0 && lane.y !== lanes[i - 1].y && (
+                    <line x1={0} x2={innerWidth} y1={lane.y} y2={lane.y} stroke="#d4d4d8" />
+                  )}
                   {lane.kind === "gantt" &&
                     lane.ranges.map((r, ri) => {
                       const start = new Date(r.start);
@@ -824,16 +871,18 @@ export default function HrvAnalysisChart({
                       const isDeclined = r.status === "declined";
                       const isTentative = r.status === "tentative";
                       const isNeedsAction = r.status === "needsAction";
+                      // 통합 레인은 서로 겹쳐 보이므로 색이 섞여 구분되도록 기본 투명도를 낮춤
+                      const baseOpacity = lane.isMerged ? 0.55 : 0.85;
                       return (
                         <rect
                           key={ri}
                           x={x1}
                           y={lane.y + 3}
                           width={w}
-                          height={LANE_HEIGHT - 6}
+                          height={lane.height - 6}
                           rx={4}
                           fill={lane.color}
-                          opacity={isDeclined ? 0.15 : isNeedsAction ? 0.35 : 0.85}
+                          opacity={isDeclined ? 0.15 : isNeedsAction ? 0.35 : baseOpacity}
                           stroke={isTentative || isNeedsAction ? lane.color : "none"}
                           strokeWidth={isTentative || isNeedsAction ? 1.5 : 0}
                           strokeDasharray={isTentative ? "3 2" : undefined}
