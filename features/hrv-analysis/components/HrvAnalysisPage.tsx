@@ -41,16 +41,23 @@ export default function HrvAnalysisPage() {
   });
   const { data: googleCalendarEvents } = useGoogleCalendarEvents(calendarFrom, calendarTo);
 
+  // 무한 확장 방지용 안전 한계 (과거 15년, 미래 5년까지만)
+  const CALENDAR_MIN_YEAR_OFFSET = 15;
+  const CALENDAR_MAX_YEAR_OFFSET = 5;
+
   function handleCalendarScrollNearEdge(direction: "past" | "future") {
+    const now = new Date();
     if (direction === "past") {
       setCalendarFrom((prev) => {
         const d = new Date(prev);
+        if (now.getFullYear() - d.getFullYear() >= CALENDAR_MIN_YEAR_OFFSET) return prev;
         d.setFullYear(d.getFullYear() - 1);
         return d.toISOString().slice(0, 10);
       });
     } else {
       setCalendarTo((prev) => {
         const d = new Date(prev);
+        if (d.getFullYear() - now.getFullYear() >= CALENDAR_MAX_YEAR_OFFSET) return prev;
         d.setFullYear(d.getFullYear() + 1);
         return d.toISOString().slice(0, 10);
       });

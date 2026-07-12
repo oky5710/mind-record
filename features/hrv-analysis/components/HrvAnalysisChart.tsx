@@ -234,6 +234,7 @@ export default function HrvAnalysisChart({
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const edgeCooldownRef = useRef<{ past: boolean; future: boolean }>({ past: false, future: false });
+  const lastEdgeTriggerRef = useRef<{ past: number; future: number }>({ past: 0, future: 0 });
   const dragRef = useRef<{
     startX: number;
     startScrollLeft: number;
@@ -588,25 +589,35 @@ export default function HrvAnalysisChart({
   }
 
   // 스크롤이 좌우 끝 근처(과거/미래 방향)에 닿으면 상위(페이지)에 더 불러오라고 알림.
-  // 한 번 알리고 나면 다시 끝에서 멀어졌다가 와야 재요청하도록 쿨다운을 둠(중복 요청 방지)
+  // 데이터가 늘어나는 동안 차트 너비가 흔들리면서 스크롤 위치가 다시 끝으로
+  // 튕겨 무한히 재요청되는 걸 막기 위해, 위치 기반 쿨다운과 별개로
+  // 방향별 최소 재요청 간격(시간 기반)도 둠
   const EDGE_THRESHOLD_PX = 200;
+  const EDGE_TRIGGER_COOLDOWN_MS = 3000;
   function handleScroll(e: ReactUIEvent<HTMLDivElement>) {
     setTooltip(null);
     if (!onScrollNearEdge) return;
     const el = e.currentTarget as HTMLDivElement;
     const nearStart = el.scrollLeft < EDGE_THRESHOLD_PX;
     const nearEnd = el.scrollWidth - el.clientWidth - el.scrollLeft < EDGE_THRESHOLD_PX;
+    const now = Date.now();
 
     if (nearStart && !edgeCooldownRef.current.past) {
       edgeCooldownRef.current.past = true;
-      onScrollNearEdge("past");
+      if (now - lastEdgeTriggerRef.current.past > EDGE_TRIGGER_COOLDOWN_MS) {
+        lastEdgeTriggerRef.current.past = now;
+        onScrollNearEdge("past");
+      }
     } else if (!nearStart) {
       edgeCooldownRef.current.past = false;
     }
 
     if (nearEnd && !edgeCooldownRef.current.future) {
       edgeCooldownRef.current.future = true;
-      onScrollNearEdge("future");
+      if (now - lastEdgeTriggerRef.current.future > EDGE_TRIGGER_COOLDOWN_MS) {
+        lastEdgeTriggerRef.current.future = now;
+        onScrollNearEdge("future");
+      }
     } else if (!nearEnd) {
       edgeCooldownRef.current.future = false;
     }
