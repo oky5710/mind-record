@@ -607,7 +607,7 @@ export default function HrvAnalysisChart({
                   )}
                   {showPoints &&
                     points.map((p, i) => {
-                      const isLow = recentAvg !== null && p.value < recentAvg * 0.5;
+                      const isLow = recentAvg !== null && p.value < recentAvg * 0.25;
                       return (
                         <circle
                           key={i}
