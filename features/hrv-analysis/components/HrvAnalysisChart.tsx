@@ -49,6 +49,8 @@ interface Props {
   examSdnnPoints?: HrvSamplePoint[];
   /** true면 개별 샘플 대신 하루 중앙값 하나로 묶어서 라인을 그림 (일 단위 개요용) */
   dailyMedian?: boolean;
+  /** true면 라인 대신 월별 최소~최대 범위 막대 + 중앙값 선으로 그림 (월 단위 개요용) */
+  monthlyRange?: boolean;
 }
 
 type SeriesKind = "line" | "gantt" | "dot" | "mood";
@@ -219,6 +221,7 @@ export default function HrvAnalysisChart({
   moodData,
   examSdnnPoints,
   dailyMedian = false,
+  monthlyRange = false,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
@@ -352,6 +355,38 @@ export default function HrvAnalysisChart({
       .sort((a, b) => a.date.getTime() - b.date.getTime());
   }, [data, minDate, maxDate, dailyMedian]);
 
+  // 월 단위: 월별 최소/최대/중앙값 통계 (막대 + 중앙값 선으로 표시)
+  const monthlyStats = useMemo(() => {
+    if (!monthlyRange) return [];
+    const minT = minDate.getTime();
+    const maxT = maxDate.getTime();
+    const filtered = data
+      .map((d) => ({ date: new Date(d.timestamp), value: d.value }))
+      .filter((p) => p.date.getTime() >= minT && p.date.getTime() <= maxT);
+
+    const monthMap = new Map<string, number[]>();
+    filtered.forEach((p) => {
+      const key = `${p.date.getFullYear()}-${p.date.getMonth()}`;
+      const values = monthMap.get(key) ?? [];
+      values.push(p.value);
+      monthMap.set(key, values);
+    });
+
+    return Array.from(monthMap.entries())
+      .map(([key, values]) => {
+        const [y, m] = key.split("-").map(Number);
+        const sorted = [...values].sort((a, b) => a - b);
+        return {
+          monthStart: new Date(y, m, 1),
+          monthEnd: new Date(y, m + 1, 1),
+          min: sorted[0],
+          max: sorted[sorted.length - 1],
+          median: d3.median(sorted) ?? 0,
+        };
+      })
+      .sort((a, b) => a.monthStart.getTime() - b.monthStart.getTime());
+  }, [data, minDate, maxDate, monthlyRange]);
+
   const totalDays = Math.max(1, (maxDate.getTime() - minDate.getTime()) / 86_400_000);
   const innerWidth = Math.max(300, totalDays * pxPerDay);
   const scrollableWidth = innerWidth + MARGIN.right;
@@ -362,9 +397,11 @@ export default function HrvAnalysisChart({
   );
 
   const yScale = useMemo(() => {
-    const max = d3.max(points, (p) => p.value) ?? 0;
+    const max = monthlyRange
+      ? d3.max(monthlyStats, (m) => m.max) ?? 0
+      : d3.max(points, (p) => p.value) ?? 0;
     return d3.scaleLinear().domain([0, max]).nice().range([innerHeight, 0]);
-  }, [points, innerHeight]);
+  }, [points, monthlyStats, monthlyRange, innerHeight]);
 
   // 일 중앙값 모드는 점 사이 간격이 원래 하루(약 86_400_000ms)이므로 그에 맞는 기준으로 끊어짐을 판단
   const gapThresholdMs = dailyMedian ? 1.5 * 86_400_000 : GAP_THRESHOLD_MS;
@@ -471,10 +508,11 @@ export default function HrvAnalysisChart({
     return d3.median(recent, (p) => p.value) ?? null;
   }, [data]);
 
-  // 날짜 경계(0시)마다 세로 실선 그리드를 그려 라인/간트 레인이 서로 정렬돼 보이게 함
+  // 날짜(또는 월 단위일 땐 월) 경계마다 세로 실선 그리드를 그려 라인/간트 레인이 서로 정렬돼 보이게 함
   const dayGridlines = useMemo(() => {
+    if (monthlyRange) return d3.timeMonth.range(d3.timeMonth.floor(minDate), maxDate);
     return d3.timeDay.range(d3.timeDay.floor(minDate), maxDate);
-  }, [minDate, maxDate]);
+  }, [minDate, maxDate, monthlyRange]);
 
   // 처음 로드되면 가장 최근 데이터가 보이도록 오른쪽 끝으로 스크롤
   useLayoutEffect(() => {
@@ -592,8 +630,52 @@ export default function HrvAnalysisChart({
                   {yTicks.map((t) => (
                     <line key={t} x1={0} x2={innerWidth} y1={yScale(t)} y2={yScale(t)} stroke="#e4e4e7" />
                   ))}
-                  <path d={areaGenerator(points) ?? undefined} fill={`url(#${gradientId})`} stroke="none" />
-                  <path d={lineGenerator(points) ?? undefined} fill="none" stroke={color} strokeWidth={1.5} />
+                  {monthlyRange ? (
+                    monthlyStats.map((m, i) => {
+                      const x1 = xScale(m.monthStart);
+                      const x2 = xScale(m.monthEnd);
+                      const fullW = x2 - x1;
+                      const barW = fullW * 0.6;
+                      const barX = x1 + (fullW - barW) / 2;
+                      const yTop = yScale(m.max);
+                      const yBottom = yScale(m.min);
+                      const h = Math.max(1, yBottom - yTop);
+                      const yMed = yScale(m.median);
+                      return (
+                        <g key={i}>
+                          <rect x={barX} y={yTop} width={barW} height={h} rx={6} fill={color} opacity={0.35} />
+                          <line
+                            x1={barX}
+                            x2={barX + barW}
+                            y1={yMed}
+                            y2={yMed}
+                            stroke={color}
+                            strokeWidth={3}
+                          />
+                        </g>
+                      );
+                    })
+                  ) : (
+                    <>
+                      <path d={areaGenerator(points) ?? undefined} fill={`url(#${gradientId})`} stroke="none" />
+                      <path d={lineGenerator(points) ?? undefined} fill="none" stroke={color} strokeWidth={1.5} />
+                      {showPoints &&
+                        points.map((p, i) => {
+                          const isLow = recentAvg !== null && p.value < recentAvg * 0.25;
+                          return (
+                            <circle
+                              key={i}
+                              cx={xScale(p.date)}
+                              cy={yScale(p.value)}
+                              r={4}
+                              fill="#fff"
+                              stroke={isLow ? "#ef4444" : color}
+                              strokeWidth={1.5}
+                            />
+                          );
+                        })}
+                    </>
+                  )}
                   {recentAvg !== null && (
                     <line
                       x1={0}
@@ -605,21 +687,6 @@ export default function HrvAnalysisChart({
                       strokeDasharray="4 4"
                     />
                   )}
-                  {showPoints &&
-                    points.map((p, i) => {
-                      const isLow = recentAvg !== null && p.value < recentAvg * 0.25;
-                      return (
-                        <circle
-                          key={i}
-                          cx={xScale(p.date)}
-                          cy={yScale(p.value)}
-                          r={4}
-                          fill="#fff"
-                          stroke={isLow ? "#ef4444" : color}
-                          strokeWidth={1.5}
-                        />
-                      );
-                    })}
                   {(examSdnnPoints ?? []).map((p, i) => {
                     const d = new Date(p.timestamp);
                     if (isNaN(d.getTime())) return null;

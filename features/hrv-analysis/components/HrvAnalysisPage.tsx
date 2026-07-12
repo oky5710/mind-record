@@ -12,8 +12,9 @@ import { useMoodList } from "@/features/calendar/queries/useMood";
 import HrvAnalysisChart from "./HrvAnalysisChart";
 import QueryBuilderIcon from '@mui/icons-material/QueryBuilder';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import BarChartIcon from '@mui/icons-material/BarChart';
 
-type ViewMode = "day" | "hour";
+type ViewMode = "day" | "hour" | "month";
 
 export default function HrvAnalysisPage() {
   const { data, isLoading, error } = useWearableSampleList("heartRateVariability");
@@ -92,6 +93,19 @@ export default function HrvAnalysisPage() {
             ].join(" ")}
           >
             <QueryBuilderIcon fontSize={'small'}/>
+          </button>
+            <span className={"border-r-1 border-blue-500"}/>
+          <button
+            type="button"
+            onClick={() => setMode("month")}
+            className={[
+              "px-2 transition-colors text-s",
+              mode === "month"
+                ? "bg-blue-50 text-blue-500 "
+                : "bg-white  hover:bg-muted/70 opacity-20",
+            ].join(" ")}
+          >
+            <BarChartIcon fontSize={'small'}/>
           </button></div>
           <Input
             type="date"
@@ -131,6 +145,21 @@ export default function HrvAnalysisPage() {
             showPoints
             tickMode="time"
             jumpToDate={jumpDate}
+            sleepRanges={sleepRanges}
+            exerciseRanges={exerciseRanges}
+            coffeeTimes={coffeeTimes}
+            examTimes={examTimes}
+            moodData={moodPoints}
+            examSdnnPoints={examSdnnPoints}
+          />
+        )}
+        {!isLoading && !error && mode === "month" && (
+          <HrvAnalysisChart
+            data={data ?? []}
+            pxPerDay={2}
+            tickMode="date"
+            jumpToDate={jumpDate}
+            monthlyRange
             sleepRanges={sleepRanges}
             exerciseRanges={exerciseRanges}
             coffeeTimes={coffeeTimes}
