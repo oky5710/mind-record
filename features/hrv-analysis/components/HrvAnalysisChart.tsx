@@ -806,8 +806,8 @@ export default function HrvAnalysisChart({
                       const isDeclined = r.status === "declined";
                       const isTentative = r.status === "tentative";
                       const isNeedsAction = r.status === "needsAction";
-                      // 통합 레인은 서로 겹쳐 보이므로 색이 섞여 구분되도록 기본 투명도를 낮춤
-                      const baseOpacity = lane.isMerged ? 0.55 : 0.85;
+                      // 수면/운동/구글 캘린더는 서로 시간이 겹치지 않으므로 블렌딩용 투명도를 따로 두지 않음
+                      const baseOpacity = 0.85;
                       return (
                         <rect
                           key={ri}
