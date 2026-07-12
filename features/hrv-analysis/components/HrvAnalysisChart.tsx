@@ -900,6 +900,12 @@ export default function HrvAnalysisChart({
                 (() => {
                   const laneY = lanes[0].y;
                   const laneHeight = lanes[0].height;
+                  // 하루에 2잔 이상이면 그날 커피 아이콘을 전부 강조(빨강)
+                  const coffeeCountByDay = new Map<string, number>();
+                  (coffeeTimes ?? []).forEach((t) => {
+                    const day = t.slice(0, 10);
+                    coffeeCountByDay.set(day, (coffeeCountByDay.get(day) ?? 0) + 1);
+                  });
                   return (
                     <>
                       {!hiddenKeys.has("exam") &&
@@ -928,6 +934,7 @@ export default function HrvAnalysisChart({
                           const x = xScale(d);
                           if (x < 0 || x > innerWidth) return null;
                           const cy = jitteredLaneY(`coffee-${t}-${ti}`, laneY, laneHeight, 9);
+                          const isOverLimit = (coffeeCountByDay.get(t.slice(0, 10)) ?? 0) >= 2;
                           return (
                             <CoffeeIcon
                               key={ti}
@@ -935,7 +942,7 @@ export default function HrvAnalysisChart({
                               y={cy - 8}
                               width={16}
                               height={16}
-                              style={{ fill: "#92400e" }}
+                              style={{ fill: isOverLimit ? "#ef4444" : "#92400e" }}
                             />
                           );
                         })}
