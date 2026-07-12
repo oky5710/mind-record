@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { href: "/medicine", label: "복용약" },
   { href: "/chart", label: "차트보기" },
   { href: "/hrv-analysis", label: "심박변이 분석" },
+  { href: "/settings", label: "설정" },
 ];
 
 interface Props {
