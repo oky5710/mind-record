@@ -28,40 +28,27 @@ export default function HrvAnalysisPage() {
   const [jumpDate, setJumpDate] = useState<string | null>(null);
 
   // 구글 캘린더는 데이터가 많을 수 있어 처음엔 최근 1년치만 불러오고,
-  // 차트를 과거/미래 방향 끝까지 스크롤하면 그 방향으로 1년씩 더 불러옴
+  // 차트를 과거 방향 끝까지 스크롤하면 1년씩 더 불러옴. 오늘 이후(미래)는 조회하지 않음
   const [calendarFrom, setCalendarFrom] = useState(() => {
     const d = new Date();
     d.setFullYear(d.getFullYear() - 1);
     return d.toISOString().slice(0, 10);
   });
-  const [calendarTo, setCalendarTo] = useState(() => {
-    const d = new Date();
-    d.setMonth(d.getMonth() + 1);
-    return d.toISOString().slice(0, 10);
-  });
+  const calendarTo = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const { data: googleCalendarEvents } = useGoogleCalendarEvents(calendarFrom, calendarTo);
 
-  // 무한 확장 방지용 안전 한계 (과거 15년, 미래 5년까지만)
+  // 무한 확장 방지용 안전 한계 (과거 15년까지만)
   const CALENDAR_MIN_YEAR_OFFSET = 15;
-  const CALENDAR_MAX_YEAR_OFFSET = 5;
 
   function handleCalendarScrollNearEdge(direction: "past" | "future") {
+    if (direction !== "past") return;
     const now = new Date();
-    if (direction === "past") {
-      setCalendarFrom((prev) => {
-        const d = new Date(prev);
-        if (now.getFullYear() - d.getFullYear() >= CALENDAR_MIN_YEAR_OFFSET) return prev;
-        d.setFullYear(d.getFullYear() - 1);
-        return d.toISOString().slice(0, 10);
-      });
-    } else {
-      setCalendarTo((prev) => {
-        const d = new Date(prev);
-        if (d.getFullYear() - now.getFullYear() >= CALENDAR_MAX_YEAR_OFFSET) return prev;
-        d.setFullYear(d.getFullYear() + 1);
-        return d.toISOString().slice(0, 10);
-      });
-    }
+    setCalendarFrom((prev) => {
+      const d = new Date(prev);
+      if (now.getFullYear() - d.getFullYear() >= CALENDAR_MIN_YEAR_OFFSET) return prev;
+      d.setFullYear(d.getFullYear() - 1);
+      return d.toISOString().slice(0, 10);
+    });
   }
 
   const sleepRanges = useMemo(
