@@ -174,6 +174,21 @@ const AxisGroupDark = styled.g`
   }
 `;
 
+// 같은 시각에 여러 이벤트가 겹칠 수 있어, 레인 안에서 y좌표를 아이템별로 흩어지게 함
+// (매 렌더마다 값이 바뀌면 안 되므로 seed 문자열 기반 결정론적 난수 사용)
+function seededRandom01(seed: string) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) {
+    h = (h * 31 + seed.charCodeAt(i)) | 0;
+  }
+  return (h >>> 0) / 0xffffffff;
+}
+
+function jitteredLaneY(seed: string, laneY: number, laneHeight: number, margin: number) {
+  const range = Math.max(0, laneHeight - margin * 2);
+  return laneY + margin + seededRandom01(seed) * range;
+}
+
 function formatYmd(d: Date) {
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
@@ -813,7 +828,8 @@ export default function HrvAnalysisChart({
               ))}
               {lanes.length > 0 &&
                 (() => {
-                  const cy = lanes[0].y + lanes[0].height / 2;
+                  const laneY = lanes[0].y;
+                  const laneHeight = lanes[0].height;
                   return (
                     <>
                       {!hiddenKeys.has("exam") &&
@@ -822,6 +838,7 @@ export default function HrvAnalysisChart({
                           if (isNaN(d.getTime())) return null;
                           const x = xScale(d);
                           if (x < 0 || x > innerWidth) return null;
+                          const cy = jitteredLaneY(`exam-${t}-${ti}`, laneY, laneHeight, 6);
                           return (
                             <circle
                               key={ti}
@@ -840,6 +857,7 @@ export default function HrvAnalysisChart({
                           if (isNaN(d.getTime())) return null;
                           const x = xScale(d);
                           if (x < 0 || x > innerWidth) return null;
+                          const cy = jitteredLaneY(`coffee-${t}-${ti}`, laneY, laneHeight, 9);
                           return (
                             <CoffeeIcon
                               key={ti}
@@ -857,6 +875,7 @@ export default function HrvAnalysisChart({
                           const start = new Date(`${day}T00:00:00`);
                           const x = xScale(start);
                           if (x < 0 || x > innerWidth) return null;
+                          const cy = jitteredLaneY(`mood-${m.date}-${mi}`, laneY, laneHeight, 9);
                           return (
                             <text
                               key={mi}
