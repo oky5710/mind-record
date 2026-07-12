@@ -436,7 +436,9 @@ export default function HrvAnalysisChart({
     const formatTick =
       tickMode === "time"
         ? (d: Date) => (d3.timeDay(d).getTime() === d.getTime() ? d3.timeFormat("%m-%d")(d) : formatTimeOfDay(d))
-        : (d: Date) => d3.timeFormat("%m-%d")(d);
+        : monthlyRange
+          ? (d: Date) => (d3.timeYear(d).getTime() === d.getTime() ? d3.timeFormat("%Y")(d) : d3.timeFormat("%m-%d")(d))
+          : (d: Date) => d3.timeFormat("%m-%d")(d);
 
     // HRV 라인차트 안쪽(top, 간트 차트와 붙도록 라벨을 안으로 당김) + 전체 레인들 아래(bottom)
     const configs = [
@@ -460,7 +462,10 @@ export default function HrvAnalysisChart({
       // 않도록 정렬 기준을 안쪽으로 붙임
       const items: { node: SVGTextElement; isBoundary: boolean; left: number; right: number }[] = [];
       texts.each(function (d, i) {
-        const isBoundary = tickMode === "time" && d3.timeDay(d).getTime() === d.getTime();
+        const isBoundary =
+          tickMode === "time"
+            ? d3.timeDay(d).getTime() === d.getTime()
+            : monthlyRange && d3.timeYear(d).getTime() === d.getTime();
         const textSel = d3
           .select(this)
           .style("font-weight", isBoundary ? "700" : "400")
@@ -494,7 +499,7 @@ export default function HrvAnalysisChart({
         if (!shouldHide) lastVisibleRight = item.right;
       });
     });
-  }, [xScale, innerWidth, tickMode, showHrv, axisY]);
+  }, [xScale, innerWidth, tickMode, showHrv, axisY, monthlyRange]);
 
   const yTicks = useMemo(() => yScale.ticks(5), [yScale]);
 
@@ -638,7 +643,7 @@ export default function HrvAnalysisChart({
                       const x1 = xScale(m.monthStart);
                       const x2 = xScale(m.monthEnd);
                       const fullW = x2 - x1;
-                      const barW = fullW * 0.6;
+                      const barW = fullW * 0.4;
                       const barX = x1 + (fullW - barW) / 2;
                       const yTop = yScale(m.max);
                       const yBottom = yScale(m.min);

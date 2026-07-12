@@ -156,7 +156,7 @@ export default function HrvAnalysisPage() {
         {!isLoading && !error && mode === "month" && (
           <HrvAnalysisChart
             data={data ?? []}
-            pxPerDay={2}
+            pxPerDay={1.2}
             tickMode="date"
             jumpToDate={jumpDate}
             monthlyRange
