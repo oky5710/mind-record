@@ -83,6 +83,8 @@ const DRAG_THRESHOLD_PX = 4;
 // (정상 간격은 대체로 2시간 안팎 — 그 몇 배 이상 비면 착용하지 않은 것으로 봄)
 const GAP_THRESHOLD_MS = 3 * 60 * 60 * 1000;
 const LANE_HEIGHT = 34;
+// 이 시간 미만으로 잔 경우 수면 막대를 빨간색으로 강조
+const SHORT_SLEEP_THRESHOLD_MS = 5 * 60 * 60 * 1000;
 
 const ScrollContainer = styled.div`
   width: 100%;
@@ -857,6 +859,7 @@ export default function HrvAnalysisChart({
                       // 수면/운동/구글 캘린더는 서로 시간이 겹치지 않으므로 블렌딩용 투명도를 따로 두지 않음
                       const baseOpacity = 0.85;
                       const tooltipLabel = formatGanttTooltipLabel(lane.key, r, start, end);
+                      const isShortSleep = lane.key === "sleep" && end.getTime() - start.getTime() < SHORT_SLEEP_THRESHOLD_MS;
                       return (
                         <g key={ri}>
                           <rect
@@ -865,7 +868,7 @@ export default function HrvAnalysisChart({
                             width={w}
                             height={lane.height - 6}
                             rx={4}
-                            fill={lane.color}
+                            fill={isShortSleep ? "#ef4444" : lane.color}
                             opacity={isDeclined ? 0.15 : isNeedsAction ? 0.35 : baseOpacity}
                             stroke={isTentative || isNeedsAction ? lane.color : "none"}
                             strokeWidth={isTentative || isNeedsAction ? 1.5 : 0}
