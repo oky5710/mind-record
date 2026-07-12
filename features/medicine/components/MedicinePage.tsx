@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Navigation from "@/features/shared/components/Navigation";
 import BottomSheet from "@/features/shared/components/BottomSheet";
-import LoadingIndicator from "@/features/shared/components/LoadingIndicator";
 import {
   useMedications,
   useAddMedication,
@@ -272,7 +271,9 @@ export default function MedicinePage() {
     <div className="min-h-dvh flex flex-col bg-background">
       <Navigation />
       <main className="flex-1 max-w-md lg:max-w-4xl mx-auto w-full px-4 py-4 flex flex-col gap-3 pb-28">
-        {isLoading && <LoadingIndicator />}
+        {isLoading && (
+          <p className="text-sm text-muted-foreground text-center py-10">불러오는 중...</p>
+        )}
         {error && (
           <p className="text-sm text-destructive text-center py-10">목록을 불러오지 못했습니다.</p>
         )}

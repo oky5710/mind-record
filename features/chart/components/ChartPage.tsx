@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import Navigation from "@/features/shared/components/Navigation";
-import LoadingIndicator from "@/features/shared/components/LoadingIndicator";
 import { useHrvList } from "@/features/calendar/queries/useHrv";
 import { useWearableList } from "@/features/calendar/queries/useWearable";
 import { useMoodList } from "@/features/calendar/queries/useMood";
@@ -60,7 +59,9 @@ export default function ChartPage() {
     <div className="min-h-dvh flex flex-col bg-background">
       <Navigation />
       <div className="flex-1 max-w-md lg:max-w-4xl mx-auto w-full px-4 py-4">
-        {isLoading && <LoadingIndicator />}
+        {isLoading && (
+          <p className="text-sm text-muted-foreground text-center py-10">불러오는 중...</p>
+        )}
         {error && (
           <p className="text-sm text-destructive text-center py-10">{error.message}</p>
         )}
