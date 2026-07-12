@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
+import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, UIEvent as ReactUIEvent } from "react";
 import * as d3 from "d3";
 import styled from "styled-components";
 import { ChartWrapper, ChartEmptyState } from "@/features/chart/components/charts/ChartLayout";
@@ -55,6 +55,8 @@ interface Props {
   monthlyRange?: boolean;
   /** 월 단위 막대를 클릭했을 때 해당 월의 시작일(yyyy-MM-dd)을 전달 */
   onMonthClick?: (date: string) => void;
+  /** 스크롤이 좌우 끝 근처에 닿으면 더 불러올 방향("past" | "future")을 전달 */
+  onScrollNearEdge?: (direction: "past" | "future") => void;
 }
 
 type SeriesKind = "line" | "gantt" | "dot" | "mood";
@@ -228,8 +230,10 @@ export default function HrvAnalysisChart({
   dailyMedian = false,
   monthlyRange = false,
   onMonthClick,
+  onScrollNearEdge,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const edgeCooldownRef = useRef<{ past: boolean; future: boolean }>({ past: false, future: false });
   const dragRef = useRef<{
     startX: number;
     startScrollLeft: number;
@@ -583,6 +587,31 @@ export default function HrvAnalysisChart({
     dragRef.current = null;
   }
 
+  // 스크롤이 좌우 끝 근처(과거/미래 방향)에 닿으면 상위(페이지)에 더 불러오라고 알림.
+  // 한 번 알리고 나면 다시 끝에서 멀어졌다가 와야 재요청하도록 쿨다운을 둠(중복 요청 방지)
+  const EDGE_THRESHOLD_PX = 200;
+  function handleScroll(e: ReactUIEvent<HTMLDivElement>) {
+    setTooltip(null);
+    if (!onScrollNearEdge) return;
+    const el = e.currentTarget as HTMLDivElement;
+    const nearStart = el.scrollLeft < EDGE_THRESHOLD_PX;
+    const nearEnd = el.scrollWidth - el.clientWidth - el.scrollLeft < EDGE_THRESHOLD_PX;
+
+    if (nearStart && !edgeCooldownRef.current.past) {
+      edgeCooldownRef.current.past = true;
+      onScrollNearEdge("past");
+    } else if (!nearStart) {
+      edgeCooldownRef.current.past = false;
+    }
+
+    if (nearEnd && !edgeCooldownRef.current.future) {
+      edgeCooldownRef.current.future = true;
+      onScrollNearEdge("future");
+    } else if (!nearEnd) {
+      edgeCooldownRef.current.future = false;
+    }
+  }
+
   function updateTooltipAt(svg: SVGSVGElement, clientX: number, clientY: number) {
     const rect = svg.getBoundingClientRect();
     const xPos = clientX - rect.left;
@@ -623,7 +652,7 @@ export default function HrvAnalysisChart({
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
         onPointerLeave={handlePointerUp}
-        onScroll={() => setTooltip(null)}
+        onScroll={handleScroll}
       >
         <PlotArea style={{ width: scrollableWidth, height: totalHeight }}>
           {showHrv &&

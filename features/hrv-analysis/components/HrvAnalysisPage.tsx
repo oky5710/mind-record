@@ -24,9 +24,38 @@ export default function HrvAnalysisPage() {
   const { data: coffeeData } = useCoffeeList();
   const { data: hrvExamData } = useHrvList();
   const { data: moodData } = useMoodList();
-  const { data: googleCalendarEvents } = useGoogleCalendarEvents("2020-01-01", "2027-01-01");
   const [mode, setMode] = useState<ViewMode>("hour");
   const [jumpDate, setJumpDate] = useState<string | null>(null);
+
+  // 구글 캘린더는 데이터가 많을 수 있어 처음엔 최근 1년치만 불러오고,
+  // 차트를 과거/미래 방향 끝까지 스크롤하면 그 방향으로 1년씩 더 불러옴
+  const [calendarFrom, setCalendarFrom] = useState(() => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - 1);
+    return d.toISOString().slice(0, 10);
+  });
+  const [calendarTo, setCalendarTo] = useState(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + 1);
+    return d.toISOString().slice(0, 10);
+  });
+  const { data: googleCalendarEvents } = useGoogleCalendarEvents(calendarFrom, calendarTo);
+
+  function handleCalendarScrollNearEdge(direction: "past" | "future") {
+    if (direction === "past") {
+      setCalendarFrom((prev) => {
+        const d = new Date(prev);
+        d.setFullYear(d.getFullYear() - 1);
+        return d.toISOString().slice(0, 10);
+      });
+    } else {
+      setCalendarTo((prev) => {
+        const d = new Date(prev);
+        d.setFullYear(d.getFullYear() + 1);
+        return d.toISOString().slice(0, 10);
+      });
+    }
+  }
 
   const sleepRanges = useMemo(
     () =>
@@ -139,6 +168,7 @@ export default function HrvAnalysisPage() {
             sleepRanges={sleepRanges}
             exerciseRanges={exerciseRanges}
             googleCalendarRanges={googleCalendarRanges}
+            onScrollNearEdge={handleCalendarScrollNearEdge}
             coffeeTimes={coffeeTimes}
             examTimes={examTimes}
             moodData={moodPoints}
@@ -156,6 +186,7 @@ export default function HrvAnalysisPage() {
             sleepRanges={sleepRanges}
             exerciseRanges={exerciseRanges}
             googleCalendarRanges={googleCalendarRanges}
+            onScrollNearEdge={handleCalendarScrollNearEdge}
             coffeeTimes={coffeeTimes}
             examTimes={examTimes}
             moodData={moodPoints}
@@ -176,6 +207,7 @@ export default function HrvAnalysisPage() {
             sleepRanges={sleepRanges}
             exerciseRanges={exerciseRanges}
             googleCalendarRanges={googleCalendarRanges}
+            onScrollNearEdge={handleCalendarScrollNearEdge}
             coffeeTimes={coffeeTimes}
             examTimes={examTimes}
             moodData={moodPoints}
