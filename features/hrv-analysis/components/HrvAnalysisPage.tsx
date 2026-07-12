@@ -113,6 +113,7 @@ export default function HrvAnalysisPage() {
             pxPerDay={60}
             tickMode="date"
             jumpToDate={jumpDate}
+            dailyMedian
             sleepRanges={sleepRanges}
             exerciseRanges={exerciseRanges}
             coffeeTimes={coffeeTimes}

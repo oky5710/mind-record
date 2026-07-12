@@ -47,6 +47,8 @@ interface Props {
   moodData?: MoodPoint[];
   /** 검사 결과의 SDNN 값을 검사 시점의 HRV 라인 차트 위에 녹색 세모로 표시 */
   examSdnnPoints?: HrvSamplePoint[];
+  /** true면 개별 샘플 대신 하루 중앙값 하나로 묶어서 라인을 그림 (일 단위 개요용) */
+  dailyMedian?: boolean;
 }
 
 type SeriesKind = "line" | "gantt" | "dot" | "mood";
@@ -216,6 +218,7 @@ export default function HrvAnalysisChart({
   examTimes,
   moodData,
   examSdnnPoints,
+  dailyMedian = false,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
@@ -329,11 +332,25 @@ export default function HrvAnalysisChart({
   const points = useMemo(() => {
     const minT = minDate.getTime();
     const maxT = maxDate.getTime();
-    return data
+    const filtered = data
       .map((d) => ({ date: new Date(d.timestamp), value: d.value }))
       .filter((p) => p.date.getTime() >= minT && p.date.getTime() <= maxT)
       .sort((a, b) => a.date.getTime() - b.date.getTime());
-  }, [data, minDate, maxDate]);
+
+    if (!dailyMedian) return filtered;
+
+    // 하루 단위로 묶어 중앙값 하나로 대표 (날짜 시작 시각에 위치)
+    const dayMap = new Map<number, number[]>();
+    filtered.forEach((p) => {
+      const dayStart = new Date(p.date.getFullYear(), p.date.getMonth(), p.date.getDate()).getTime();
+      const values = dayMap.get(dayStart) ?? [];
+      values.push(p.value);
+      dayMap.set(dayStart, values);
+    });
+    return Array.from(dayMap.entries())
+      .map(([dayStart, values]) => ({ date: new Date(dayStart), value: d3.median(values) ?? 0 }))
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+  }, [data, minDate, maxDate, dailyMedian]);
 
   const totalDays = Math.max(1, (maxDate.getTime() - minDate.getTime()) / 86_400_000);
   const innerWidth = Math.max(300, totalDays * pxPerDay);
@@ -349,14 +366,17 @@ export default function HrvAnalysisChart({
     return d3.scaleLinear().domain([0, max]).nice().range([innerHeight, 0]);
   }, [points, innerHeight]);
 
+  // 일 중앙값 모드는 점 사이 간격이 원래 하루(약 86_400_000ms)이므로 그에 맞는 기준으로 끊어짐을 판단
+  const gapThresholdMs = dailyMedian ? 1.5 * 86_400_000 : GAP_THRESHOLD_MS;
+
   const lineGenerator = useMemo(
     () =>
       d3
         .line<{ date: Date; value: number }>()
         .x((p) => xScale(p.date))
         .y((p) => yScale(p.value))
-        .defined((p, i, arr) => i === 0 || p.date.getTime() - arr[i - 1].date.getTime() <= GAP_THRESHOLD_MS),
-    [xScale, yScale]
+        .defined((p, i, arr) => i === 0 || p.date.getTime() - arr[i - 1].date.getTime() <= gapThresholdMs),
+    [xScale, yScale, gapThresholdMs]
   );
 
   const areaGenerator = useMemo(
@@ -366,8 +386,8 @@ export default function HrvAnalysisChart({
         .x((p) => xScale(p.date))
         .y0(innerHeight)
         .y1((p) => yScale(p.value))
-        .defined((p, i, arr) => i === 0 || p.date.getTime() - arr[i - 1].date.getTime() <= GAP_THRESHOLD_MS),
-    [xScale, yScale, innerHeight]
+        .defined((p, i, arr) => i === 0 || p.date.getTime() - arr[i - 1].date.getTime() <= gapThresholdMs),
+    [xScale, yScale, innerHeight, gapThresholdMs]
   );
 
   const bisectDate = useMemo(() => d3.bisector((p: { date: Date }) => p.date).left, []);
