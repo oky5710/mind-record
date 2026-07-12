@@ -6,6 +6,7 @@ import * as d3 from "d3";
 import styled from "styled-components";
 import { ChartWrapper, ChartEmptyState } from "@/features/chart/components/charts/ChartLayout";
 import SimpleTooltip from "./SimpleTooltip";
+import CoffeeIcon from "@mui/icons-material/Coffee";
 
 export interface HrvSamplePoint {
   timestamp: string;
@@ -286,79 +287,29 @@ export default function HrvAnalysisChart({
   const MERGED_LANE_KEYS = useMemo(() => new Set(["sleep", "exercise", "gcal"]), []);
   const MERGED_LANE_HEIGHT = LANE_HEIGHT * 2;
 
+  // 기분/커피/검사는 더 이상 별도 레인을 쓰지 않고 맨 위 차트에 겹쳐서 표시함
+  // (아래 lanes에는 수면/운동/구글 캘린더 통합 레인만 남음)
   const lanes = useMemo(() => {
-    const visible = seriesDefs.filter((s) => s.kind !== "line" && !hiddenKeys.has(s.key));
-    const visibleMerged = visible.filter((s) => MERGED_LANE_KEYS.has(s.key));
-    const visibleOthers = visible.filter((s) => !MERGED_LANE_KEYS.has(s.key));
+    const visibleMerged = seriesDefs.filter((s) => MERGED_LANE_KEYS.has(s.key) && !hiddenKeys.has(s.key));
+    if (visibleMerged.length === 0) return [];
 
-    let cursor = showHrv ? innerHeight : 0;
-    const result: Array<
-      SeriesDef & {
-        y: number;
-        height: number;
-        isMerged: boolean;
-        isFirstOfMergedGroup: boolean;
-        ranges: GanttRange[];
-        times: string[];
-        moodPoints: MoodPoint[];
-      }
-    > = [];
+    const mergedY = showHrv ? innerHeight : 0;
+    const combinedLabel = visibleMerged.map((s) => s.label).join(" · ");
+    return visibleMerged.map((s, idx) => ({
+      ...s,
+      y: mergedY,
+      height: MERGED_LANE_HEIGHT,
+      isMerged: true,
+      isFirstOfMergedGroup: idx === 0,
+      label: idx === 0 ? combinedLabel : s.label,
+      ranges:
+        s.key === "sleep" ? sleepRanges ?? [] : s.key === "exercise" ? exerciseRanges ?? [] : googleCalendarRanges ?? [],
+      times: [] as string[],
+      moodPoints: [] as MoodPoint[],
+    }));
+  }, [seriesDefs, hiddenKeys, showHrv, innerHeight, MERGED_LANE_KEYS, sleepRanges, exerciseRanges, googleCalendarRanges]);
 
-    if (visibleMerged.length > 0) {
-      const mergedY = cursor;
-      const combinedLabel = visibleMerged.map((s) => s.label).join(" · ");
-      visibleMerged.forEach((s, idx) => {
-        result.push({
-          ...s,
-          y: mergedY,
-          height: MERGED_LANE_HEIGHT,
-          isMerged: true,
-          isFirstOfMergedGroup: idx === 0,
-          label: idx === 0 ? combinedLabel : s.label,
-          ranges:
-            s.key === "sleep" ? sleepRanges ?? [] : s.key === "exercise" ? exerciseRanges ?? [] : googleCalendarRanges ?? [],
-          times: [],
-          moodPoints: [],
-        });
-      });
-      cursor += MERGED_LANE_HEIGHT;
-    }
-
-    visibleOthers.forEach((s) => {
-      const y = cursor;
-      cursor += LANE_HEIGHT;
-      result.push({
-        ...s,
-        y,
-        height: LANE_HEIGHT,
-        isMerged: false,
-        isFirstOfMergedGroup: false,
-        ranges: [],
-        times: s.key === "coffee" ? coffeeTimes ?? [] : s.key === "exam" ? examTimes ?? [] : [],
-        moodPoints: s.key === "mood" ? moodData ?? [] : [],
-      });
-    });
-
-    return result;
-  }, [
-    seriesDefs,
-    hiddenKeys,
-    showHrv,
-    innerHeight,
-    MERGED_LANE_KEYS,
-    sleepRanges,
-    exerciseRanges,
-    googleCalendarRanges,
-    coffeeTimes,
-    examTimes,
-    moodData,
-  ]);
-
-  const ganttAreaHeight = lanes.reduce((sum, l) => {
-    // 통합 레인은 그룹당 한 번만 높이를 더함(항목마다 중복 방지)
-    if (l.isMerged) return sum + (l.isFirstOfMergedGroup ? MERGED_LANE_HEIGHT : 0);
-    return sum + LANE_HEIGHT;
-  }, 0);
+  const ganttAreaHeight = lanes.length > 0 ? MERGED_LANE_HEIGHT : 0;
   const hrvBlockHeight = showHrv ? innerHeight : 0;
   const axisY = hrvBlockHeight + ganttAreaHeight;
   const totalHeight = MARGIN.top + hrvBlockHeight + ganttAreaHeight + MARGIN.bottom;
@@ -889,42 +840,71 @@ export default function HrvAnalysisChart({
                         />
                       );
                     })}
-                  {lane.kind === "dot" &&
-                    lane.times.map((t, ti) => {
-                      const d = new Date(t);
-                      if (isNaN(d.getTime())) return null;
-                      const x = xScale(d);
-                      if (x < 0 || x > innerWidth) return null;
-                      return (
-                        <circle
-                          key={ti}
-                          cx={x}
-                          cy={lane.y + LANE_HEIGHT / 2}
-                          r={5}
-                          fill={lane.color}
-                          stroke="#fff"
-                          strokeWidth={1.5}
-                        />
-                      );
-                    })}
-                  {lane.kind === "mood" &&
-                    lane.moodPoints.map((m, mi) => {
-                      const day = m.date.slice(0, 10);
-                      const start = new Date(`${day}T00:00:00`);
-                      const x = xScale(start);
-                      if (x < 0 || x > innerWidth) return null;
-                      return (
-                        <circle
-                          key={mi}
-                          cx={x}
-                          cy={lane.y + LANE_HEIGHT / 2}
-                          r={5}
-                          fill={moodColorScale(m.score)}
-                        />
-                      );
-                    })}
                 </g>
               ))}
+              {lanes.length > 0 &&
+                (() => {
+                  const cy = lanes[0].y + lanes[0].height / 2;
+                  return (
+                    <>
+                      {!hiddenKeys.has("exam") &&
+                        (examTimes ?? []).map((t, ti) => {
+                          const d = new Date(t);
+                          if (isNaN(d.getTime())) return null;
+                          const x = xScale(d);
+                          if (x < 0 || x > innerWidth) return null;
+                          return (
+                            <circle
+                              key={ti}
+                              cx={x}
+                              cy={cy}
+                              r={5}
+                              fill="#dc2626"
+                              stroke="#fff"
+                              strokeWidth={1.5}
+                            />
+                          );
+                        })}
+                      {!hiddenKeys.has("coffee") &&
+                        (coffeeTimes ?? []).map((t, ti) => {
+                          const d = new Date(t);
+                          if (isNaN(d.getTime())) return null;
+                          const x = xScale(d);
+                          if (x < 0 || x > innerWidth) return null;
+                          return (
+                            <CoffeeIcon
+                              key={ti}
+                              x={x - 8}
+                              y={cy - 8}
+                              width={16}
+                              height={16}
+                              style={{ fill: "#92400e" }}
+                            />
+                          );
+                        })}
+                      {!hiddenKeys.has("mood") &&
+                        (moodData ?? []).map((m, mi) => {
+                          const day = m.date.slice(0, 10);
+                          const start = new Date(`${day}T00:00:00`);
+                          const x = xScale(start);
+                          if (x < 0 || x > innerWidth) return null;
+                          return (
+                            <text
+                              key={mi}
+                              x={x}
+                              y={cy}
+                              fontSize={14}
+                              textAnchor="middle"
+                              dominantBaseline="central"
+                              fill={moodColorScale(m.score)}
+                            >
+                              ❤
+                            </text>
+                          );
+                        })}
+                    </>
+                  );
+                })()}
             </g>
           </svg>
         </PlotArea>
