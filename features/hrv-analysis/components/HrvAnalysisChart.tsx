@@ -15,6 +15,8 @@ export interface HrvSamplePoint {
 export interface GanttRange {
   start: string;
   end: string;
+  /** 예: 구글 캘린더 일정의 내 수락 여부("accepted" | "declined" | "tentative" | "needsAction") */
+  status?: string | null;
 }
 
 export interface MoodPoint {
@@ -817,6 +819,11 @@ export default function HrvAnalysisChart({
                       const x2 = Math.max(0, Math.min(innerWidth, xScale(end)));
                       const w = x2 - x1;
                       if (w <= 0) return null;
+                      // 참석 수락 여부(구글 캘린더)에 따라 스타일 다르게: 거절=아주 흐리게,
+                      // 미응답=테두리만, 잠정=점선 테두리, 수락/정보없음=기본
+                      const isDeclined = r.status === "declined";
+                      const isTentative = r.status === "tentative";
+                      const isNeedsAction = r.status === "needsAction";
                       return (
                         <rect
                           key={ri}
@@ -826,7 +833,10 @@ export default function HrvAnalysisChart({
                           height={LANE_HEIGHT - 6}
                           rx={4}
                           fill={lane.color}
-                          opacity={0.85}
+                          opacity={isDeclined ? 0.15 : isNeedsAction ? 0.35 : 0.85}
+                          stroke={isTentative || isNeedsAction ? lane.color : "none"}
+                          strokeWidth={isTentative || isNeedsAction ? 1.5 : 0}
+                          strokeDasharray={isTentative ? "3 2" : undefined}
                         />
                       );
                     })}

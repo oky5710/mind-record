@@ -40,27 +40,40 @@ export async function GET(req: NextRequest) {
     }
 
     const data = await res.json();
-    allItems.push(...(data.items ?? []));
+    // Google Calendar API는 종일/시간 일정을 구분해서 조회하는 쿼리 파라미터를
+    // 지원하지 않음(all-day 제외는 API 레벨에서 불가) -> 응답을 받는 즉시,
+    // 페이지별로 누적하기 전에 최대한 빨리 걸러냄.
+    // 단, 휴가(eventType: "outOfOffice")는 종일 일정이어도 가져옴
+    const timed = (data.items ?? []).filter(
+      (e: any) => e.start?.dateTime || e.eventType === "outOfOffice"
+    );
+    allItems.push(...timed);
     pageToken = data.nextPageToken;
   } while (pageToken);
 
+  const myEmail = session.user?.email?.toLowerCase();
+
   const events = allItems
     .filter((e: any) => e.start && e.end)
-    .map((e: any) => ({
-      id: e.id,
-      title: e.summary ?? "(제목 없음)",
-      start: e.start.dateTime ?? e.start.date,
-      end: e.end.dateTime ?? e.end.date,
-      allDay: !e.start.dateTime,
-      attendees: (e.attendees ?? []).map((a: any) => ({
+    .map((e: any) => {
+      const attendees = (e.attendees ?? []).map((a: any) => ({
         email: a.email,
         name: a.displayName,
         responseStatus: a.responseStatus,
         organizer: !!a.organizer,
-      })),
-    }))
-    // 종일 일정은 간트 차트에서 제외
-    .filter((e) => !e.allDay)
+      }));
+      const me = attendees.find((a: any) => a.email?.toLowerCase() === myEmail);
+      return {
+        id: e.id,
+        title: e.summary ?? "(제목 없음)",
+        start: e.start.dateTime ?? e.start.date,
+        end: e.end.dateTime ?? e.end.date,
+        allDay: !e.start.dateTime,
+        attendees,
+        // 참석자 목록에 내가 없으면(예: 다른 사람 초대 없는 개인 일정) 수락 여부를 따질 필요가 없어 null
+        myResponseStatus: me?.responseStatus ?? null,
+      };
+    })
     // 최신순으로 정렬해서 반환
     .sort((a, b) => new Date(b.start).getTime() - new Date(a.start).getTime());
 

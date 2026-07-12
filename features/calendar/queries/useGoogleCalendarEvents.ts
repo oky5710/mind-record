@@ -15,6 +15,8 @@ export interface GoogleCalendarEvent {
   end: string;
   allDay: boolean;
   attendees: GoogleCalendarAttendee[];
+  /** 내 참석 수락 여부 ("accepted" | "declined" | "tentative" | "needsAction"). 참석자 목록에 내가 없으면 null */
+  myResponseStatus: string | null;
 }
 
 export function useGoogleCalendarEvents(from: string, to: string) {

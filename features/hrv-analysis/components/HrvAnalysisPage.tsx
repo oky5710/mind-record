@@ -77,7 +77,12 @@ export default function HrvAnalysisPage() {
   );
 
   const googleCalendarRanges = useMemo(
-    () => (googleCalendarEvents ?? []).map((e) => ({ start: e.start, end: e.end })),
+    () =>
+      (googleCalendarEvents ?? []).map((e) => ({
+        start: e.start,
+        end: e.end,
+        status: e.myResponseStatus,
+      })),
     [googleCalendarEvents]
   );
 
