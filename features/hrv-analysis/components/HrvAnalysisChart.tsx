@@ -230,7 +230,7 @@ function formatGanttTooltipLabel(laneKey: string, r: GanttRange, start: Date, en
     const lines = [r.title || "(제목 없음)", `${dateLabel} ${timeRange}`];
     if (r.location) lines.push(r.location);
     if (r.attendees && r.attendees.length > 0) {
-      lines.push(`참석자: ${r.attendees.map((a) => a.name || a.email).join(", ")}`);
+      lines.push(`참석자: ${r.attendees.map((a) => a.name || a.email.split("@")[0]).join(", ")}`);
     }
     return lines.join("\n");
   }
