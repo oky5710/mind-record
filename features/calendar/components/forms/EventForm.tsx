@@ -30,6 +30,7 @@ interface Props {
   onCancel: () => void;
   isPending?: boolean;
   error?: string | null;
+  defaultValues?: { type?: EventType; title?: string; description?: string; time?: string };
 }
 
 function getCurrentTime() {
@@ -37,11 +38,11 @@ function getCurrentTime() {
   return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 }
 
-export default function EventForm({ onSubmit, onCancel, isPending, error }: Props) {
-  const [type, setType] = useState<EventType>("MEDICATION_CHANGE");
-  const [customTitle, setCustomTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [time, setTime] = useState(getCurrentTime);
+export default function EventForm({ onSubmit, onCancel, isPending, error, defaultValues }: Props) {
+  const [type, setType] = useState<EventType>(defaultValues?.type ?? "MEDICATION_CHANGE");
+  const [customTitle, setCustomTitle] = useState(defaultValues?.type === "OTHER" ? defaultValues?.title ?? "" : "");
+  const [description, setDescription] = useState(defaultValues?.description ?? "");
+  const [time, setTime] = useState(defaultValues?.time ?? getCurrentTime());
   const [submitted, setSubmitted] = useState(false);
 
   const titleError = submitted && type === "OTHER" && !customTitle.trim();

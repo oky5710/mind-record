@@ -32,13 +32,14 @@ export type ExamFormData = {
 
 interface Props {
   defaultDate: Date;
+  defaultValues?: Partial<ExamFormData>;
   onSubmit: (data: ExamFormData) => void;
   onCancel: () => void;
   isPending?: boolean;
   error?: string | null;
 }
 
-function toDatetimeLocal(date: Date): string {
+export function toDatetimeLocal(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
@@ -99,7 +100,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function ExamForm({ defaultDate, onSubmit, onCancel, isPending, error }: Props) {
+export default function ExamForm({ defaultDate, defaultValues, onSubmit, onCancel, isPending, error }: Props) {
   const now = new Date();
   const combinedDate = new Date(defaultDate);
   combinedDate.setHours(now.getHours(), now.getMinutes());
@@ -109,6 +110,7 @@ export default function ExamForm({ defaultDate, onSubmit, onCancel, isPending, e
       examinedAt: toDatetimeLocal(combinedDate),
       hospital: "",
       memo: "",
+      ...defaultValues,
     },
   });
 

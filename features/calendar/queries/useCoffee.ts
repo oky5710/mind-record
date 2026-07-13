@@ -49,3 +49,37 @@ export function useCreateCoffee() {
     },
   });
 }
+
+export function useUpdateCoffee() {
+  const { authedFetch } = useAuthedFetch();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, payload }: { id: string; payload: Partial<CoffeePayload> }) => {
+      const res = await authedFetch(`${BASE_URL}/coffee/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("커피 기록 수정 실패");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["coffee"] });
+    },
+  });
+}
+
+export function useRemoveCoffee() {
+  const { authedFetch } = useAuthedFetch();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await authedFetch(`${BASE_URL}/coffee/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("커피 기록 삭제 실패");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["coffee"] });
+    },
+  });
+}

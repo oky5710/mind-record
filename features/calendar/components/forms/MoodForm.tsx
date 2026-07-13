@@ -19,9 +19,10 @@ interface Props {
   onCancel: () => void;
   isPending?: boolean;
   error?: string | null;
+  defaultValues?: { score?: number };
 }
 
-export default function MoodForm({ onSubmit, onCancel, isPending, error }: Props) {
+export default function MoodForm({ onSubmit, onCancel, isPending, error, defaultValues }: Props) {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3">
@@ -33,9 +34,16 @@ export default function MoodForm({ onSubmit, onCancel, isPending, error }: Props
               type="button"
               disabled={isPending}
               onClick={() => onSubmit({ score })}
-              className="flex flex-col items-center gap-1.5 flex-1 disabled:opacity-50"
+              className={[
+                "flex flex-col items-center gap-1.5 flex-1 disabled:opacity-50",
+              ].join(" ")}
             >
-              <span className="text-3xl w-14 h-14 flex items-center justify-center rounded-2xl border-2 border-border bg-card hover:bg-muted hover:scale-110 transition-all">
+              <span
+                className={[
+                  "text-3xl w-14 h-14 flex items-center justify-center rounded-2xl border-2 bg-card hover:bg-muted hover:scale-110 transition-all",
+                  defaultValues?.score === score ? "border-primary" : "border-border",
+                ].join(" ")}
+              >
                 {icon}
               </span>
               <span className="text-[10px] text-muted-foreground">{label}</span>

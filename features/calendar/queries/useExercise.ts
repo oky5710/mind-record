@@ -51,3 +51,37 @@ export function useCreateExercise() {
     },
   });
 }
+
+export function useUpdateExercise() {
+  const { authedFetch } = useAuthedFetch();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, payload }: { id: string; payload: Partial<ExercisePayload> }) => {
+      const res = await authedFetch(`${BASE_URL}/exercises/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("운동 기록 수정 실패");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["exercises"] });
+    },
+  });
+}
+
+export function useRemoveExercise() {
+  const { authedFetch } = useAuthedFetch();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await authedFetch(`${BASE_URL}/exercises/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("운동 기록 삭제 실패");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["exercises"] });
+    },
+  });
+}

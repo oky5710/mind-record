@@ -48,3 +48,37 @@ export function useCreateMood() {
     },
   });
 }
+
+export function useUpdateMood() {
+  const { authedFetch } = useAuthedFetch();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, payload }: { id: string; payload: Partial<MoodPayload> }) => {
+      const res = await authedFetch(`${BASE_URL}/moods/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("기분 기록 수정 실패");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["moods"] });
+    },
+  });
+}
+
+export function useRemoveMood() {
+  const { authedFetch } = useAuthedFetch();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await authedFetch(`${BASE_URL}/moods/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("기분 기록 삭제 실패");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["moods"] });
+    },
+  });
+}

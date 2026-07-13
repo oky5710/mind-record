@@ -62,3 +62,40 @@ export function useCreateHrv() {
     },
   });
 }
+
+export function useUpdateHrv() {
+  const { authedFetch } = useAuthedFetch();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, payload }: { id: number; payload: Partial<HrvPayload> }) => {
+      const res = await authedFetch(`${BASE_URL}/hrv/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "HRV 수정에 실패했습니다");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["hrv"] });
+    },
+  });
+}
+
+export function useRemoveHrv() {
+  const { authedFetch } = useAuthedFetch();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await authedFetch(`${BASE_URL}/hrv/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("HRV 삭제에 실패했습니다");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["hrv"] });
+    },
+  });
+}

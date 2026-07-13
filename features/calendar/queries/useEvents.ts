@@ -54,3 +54,37 @@ export function useCreateEvent() {
     },
   });
 }
+
+export function useUpdateEvent() {
+  const { authedFetch } = useAuthedFetch();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, payload }: { id: string; payload: Partial<EventPayload> }) => {
+      const res = await authedFetch(`${BASE_URL}/events/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("이벤트 수정 실패");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["events"] });
+    },
+  });
+}
+
+export function useRemoveEvent() {
+  const { authedFetch } = useAuthedFetch();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await authedFetch(`${BASE_URL}/events/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("이벤트 삭제 실패");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["events"] });
+    },
+  });
+}

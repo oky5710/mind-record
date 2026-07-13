@@ -5,11 +5,30 @@ import { Button } from "@/components/ui/button";
 import EntryModal from "./EntryModal";
 import BottomSheet from "@/features/shared/components/BottomSheet";
 import HrvDetailSheet from "./HrvDetailSheet";
+import ExerciseForm, { type ExerciseFormData } from "./forms/ExerciseForm";
+import CoffeeForm, { type CoffeeFormData } from "./forms/CoffeeForm";
+import MoodForm, { type MoodFormData } from "./forms/MoodForm";
+import EventForm, { type EventFormData } from "./forms/EventForm";
 import { useHrvList, type HrvRecord } from "@/features/calendar/queries/useHrv";
-import { useExerciseList, type ExerciseRecord } from "@/features/calendar/queries/useExercise";
-import { useCoffeeList, type CoffeeRecord } from "@/features/calendar/queries/useCoffee";
-import { useMoodList, type MoodRecord } from "@/features/calendar/queries/useMood";
-import { useEventList, type EventRecord } from "@/features/calendar/queries/useEvents";
+import {
+  useExerciseList,
+  useUpdateExercise,
+  useRemoveExercise,
+  type ExerciseRecord,
+} from "@/features/calendar/queries/useExercise";
+import {
+  useCoffeeList,
+  useUpdateCoffee,
+  useRemoveCoffee,
+  type CoffeeRecord,
+} from "@/features/calendar/queries/useCoffee";
+import { useMoodList, useUpdateMood, useRemoveMood, type MoodRecord } from "@/features/calendar/queries/useMood";
+import {
+  useEventList,
+  useUpdateEvent,
+  useRemoveEvent,
+  type EventRecord,
+} from "@/features/calendar/queries/useEvents";
 import { MOOD_OPTIONS } from "./forms/MoodForm";
 import { EVENT_TYPE_LABELS } from "./forms/EventForm";
 
@@ -28,9 +47,46 @@ function getFirstDayOfMonth(year: number, month: number) {
 }
 
 function CoffeeDetailSheet({ record, onClose }: { record: CoffeeRecord; onClose: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const { mutateAsync: updateCoffee, isPending, error } = useUpdateCoffee();
+  const { mutateAsync: removeCoffee, isPending: removing } = useRemoveCoffee();
+
   const date = new Date(record.date);
   const dateLabel = `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}`;
   const timeLabel = `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+
+  async function handleUpdate(data: CoffeeFormData) {
+    const type = data.coffeeType === "직접입력" ? data.customType : data.coffeeType;
+    const [hours, minutes] = data.time.split(":").map(Number);
+    const dateObj = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours, minutes);
+    await updateCoffee({
+      id: record.id,
+      payload: { date: dateObj.toISOString(), type, memo: data.memo },
+    });
+    onClose();
+  }
+
+  async function handleDelete() {
+    if (!window.confirm("이 커피 기록을 삭제할까요?")) return;
+    await removeCoffee(record.id);
+    onClose();
+  }
+
+  if (editing) {
+    return (
+      <BottomSheet open onOpenChange={(v) => !v && onClose()} title={`커피 수정 — ${dateLabel}`} onBack={() => setEditing(false)}>
+        <div className="pt-4">
+          <CoffeeForm
+            defaultValues={{ type: record.type, time: timeLabel, memo: record.memo }}
+            onSubmit={handleUpdate}
+            onCancel={() => setEditing(false)}
+            isPending={isPending}
+            error={error?.message ?? null}
+          />
+        </div>
+      </BottomSheet>
+    );
+  }
 
   return (
     <BottomSheet open onOpenChange={(v) => !v && onClose()} title={`커피 — ${dateLabel}`}>
@@ -47,15 +103,58 @@ function CoffeeDetailSheet({ record, onClose }: { record: CoffeeRecord; onClose:
               <span className="text-sm font-medium">{value}</span>
             </div>
           ))}
+        <div className="flex gap-2 pt-4">
+          <Button variant="outline" className="flex-1" onClick={() => setEditing(true)}>
+            수정
+          </Button>
+          <Button variant="outline" className="flex-1 text-destructive" onClick={handleDelete} disabled={removing}>
+            {removing ? "삭제 중..." : "삭제"}
+          </Button>
+        </div>
       </div>
     </BottomSheet>
   );
 }
 
 function ExerciseDetailSheet({ record, onClose }: { record: ExerciseRecord; onClose: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const { mutateAsync: updateExercise, isPending, error } = useUpdateExercise();
+  const { mutateAsync: removeExercise, isPending: removing } = useRemoveExercise();
+
   const date = new Date(record.date);
   const dateLabel = `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}`;
   const intensityLabels = ["", "매우 쉬움", "쉬움", "보통", "힘듦", "매우 힘듦"];
+
+  async function handleUpdate(data: ExerciseFormData) {
+    const type = data.exerciseType === "직접입력" ? data.customTitle : data.exerciseType;
+    await updateExercise({
+      id: record.id,
+      payload: { type, durationMinutes: data.durationMinutes, intensity: data.intensity },
+    });
+    onClose();
+  }
+
+  async function handleDelete() {
+    if (!window.confirm("이 운동 기록을 삭제할까요?")) return;
+    await removeExercise(record.id);
+    onClose();
+  }
+
+  if (editing) {
+    return (
+      <BottomSheet open onOpenChange={(v) => !v && onClose()} title={`운동 수정 — ${dateLabel}`} onBack={() => setEditing(false)}>
+        <div className="pt-4">
+          <ExerciseForm
+            defaultValues={{ type: record.type, durationMinutes: record.durationMinutes, intensity: record.intensity }}
+            onSubmit={handleUpdate}
+            onCancel={() => setEditing(false)}
+            isPending={isPending}
+            error={error?.message ?? null}
+          />
+        </div>
+      </BottomSheet>
+    );
+  }
 
   return (
     <BottomSheet open onOpenChange={(v) => !v && onClose()} title={`운동 — ${dateLabel}`}>
@@ -74,15 +173,60 @@ function ExerciseDetailSheet({ record, onClose }: { record: ExerciseRecord; onCl
             <span className="text-sm font-medium">{value}</span>
           </div>
         ))}
+        <div className="flex gap-2 pt-4">
+          <Button variant="outline" className="flex-1" onClick={() => setEditing(true)}>
+            수정
+          </Button>
+          <Button variant="outline" className="flex-1 text-destructive" onClick={handleDelete} disabled={removing}>
+            {removing ? "삭제 중..." : "삭제"}
+          </Button>
+        </div>
       </div>
     </BottomSheet>
   );
 }
 
 function EventDetailSheet({ record, onClose }: { record: EventRecord; onClose: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const { mutateAsync: updateEvent, isPending, error } = useUpdateEvent();
+  const { mutateAsync: removeEvent, isPending: removing } = useRemoveEvent();
+
   const date = new Date(record.date);
   const dateLabel = `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}`;
   const timeLabel = `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+
+  async function handleUpdate(data: EventFormData) {
+    const [hours, minutes] = data.time.split(":").map(Number);
+    const dateObj = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours, minutes);
+    const title = data.type === "OTHER" ? data.customTitle : EVENT_TYPE_LABELS[data.type];
+    await updateEvent({
+      id: record.id,
+      payload: { date: dateObj.toISOString(), type: data.type, title, description: data.description },
+    });
+    onClose();
+  }
+
+  async function handleDelete() {
+    if (!window.confirm("이 이벤트 기록을 삭제할까요?")) return;
+    await removeEvent(record.id);
+    onClose();
+  }
+
+  if (editing) {
+    return (
+      <BottomSheet open onOpenChange={(v) => !v && onClose()} title={`이벤트 수정 — ${dateLabel}`} onBack={() => setEditing(false)}>
+        <div className="pt-4">
+          <EventForm
+            defaultValues={{ type: record.type, title: record.title, description: record.description, time: timeLabel }}
+            onSubmit={handleUpdate}
+            onCancel={() => setEditing(false)}
+            isPending={isPending}
+            error={error?.message ?? null}
+          />
+        </div>
+      </BottomSheet>
+    );
+  }
 
   return (
     <BottomSheet open onOpenChange={(v) => !v && onClose()} title={`이벤트 — ${dateLabel}`}>
@@ -100,6 +244,71 @@ function EventDetailSheet({ record, onClose }: { record: EventRecord; onClose: (
               <span className="text-sm font-medium">{value}</span>
             </div>
           ))}
+        <div className="flex gap-2 pt-4">
+          <Button variant="outline" className="flex-1" onClick={() => setEditing(true)}>
+            수정
+          </Button>
+          <Button variant="outline" className="flex-1 text-destructive" onClick={handleDelete} disabled={removing}>
+            {removing ? "삭제 중..." : "삭제"}
+          </Button>
+        </div>
+      </div>
+    </BottomSheet>
+  );
+}
+
+function MoodDetailSheet({ record, onClose }: { record: MoodRecord; onClose: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const { mutateAsync: updateMood, isPending, error } = useUpdateMood();
+  const { mutateAsync: removeMood, isPending: removing } = useRemoveMood();
+
+  const date = new Date(record.date);
+  const dateLabel = `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}`;
+
+  async function handleUpdate(data: MoodFormData) {
+    await updateMood({ id: record.id, payload: { score: data.score } });
+    onClose();
+  }
+
+  async function handleDelete() {
+    if (!window.confirm("이 기분 기록을 삭제할까요?")) return;
+    await removeMood(record.id);
+    onClose();
+  }
+
+  if (editing) {
+    return (
+      <BottomSheet open onOpenChange={(v) => !v && onClose()} title={`기분 수정 — ${dateLabel}`} onBack={() => setEditing(false)}>
+        <div className="pt-4">
+          <MoodForm
+            defaultValues={{ score: record.score }}
+            onSubmit={handleUpdate}
+            onCancel={() => setEditing(false)}
+            isPending={isPending}
+            error={error?.message ?? null}
+          />
+        </div>
+      </BottomSheet>
+    );
+  }
+
+  const option = getMoodOption(record.score);
+
+  return (
+    <BottomSheet open onOpenChange={(v) => !v && onClose()} title={`기분 — ${dateLabel}`}>
+      <div className="pt-4 flex flex-col gap-1">
+        <div className="flex items-center justify-between py-2 border-b border-border/50">
+          <span className="text-sm text-muted-foreground">기분</span>
+          <span className="text-sm font-medium">{option ? `${option.icon} ${option.label}` : record.score}</span>
+        </div>
+        <div className="flex gap-2 pt-4">
+          <Button variant="outline" className="flex-1" onClick={() => setEditing(true)}>
+            수정
+          </Button>
+          <Button variant="outline" className="flex-1 text-destructive" onClick={handleDelete} disabled={removing}>
+            {removing ? "삭제 중..." : "삭제"}
+          </Button>
+        </div>
       </div>
     </BottomSheet>
   );
@@ -114,6 +323,7 @@ export default function Calendar() {
   const [selectedExercise, setSelectedExercise] = useState<ExerciseRecord | null>(null);
   const [selectedCoffee, setSelectedCoffee] = useState<CoffeeRecord | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<EventRecord | null>(null);
+  const [selectedMood, setSelectedMood] = useState<MoodRecord | null>(null);
 
   const { data: hrvList } = useHrvList();
   const { data: exerciseList } = useExerciseList();
@@ -283,9 +493,14 @@ export default function Calendar() {
                           {day}
                         </span>
                         {moodRecords.map((r) => (
-                          <span key={r.id} className="text-base leading-none" aria-label="기분">
+                          <button
+                            key={r.id}
+                            onClick={(e) => { e.stopPropagation(); setSelectedMood(r); }}
+                            className="text-base leading-none"
+                            aria-label="기분"
+                          >
                             {getMoodOption(r.score)?.icon}
-                          </span>
+                          </button>
                         ))}
                       </div>
                       <div className="w-full flex flex-col gap-0.5">
@@ -357,6 +572,9 @@ export default function Calendar() {
       )}
       {selectedEvent && (
         <EventDetailSheet record={selectedEvent} onClose={() => setSelectedEvent(null)} />
+      )}
+      {selectedMood && (
+        <MoodDetailSheet record={selectedMood} onClose={() => setSelectedMood(null)} />
       )}
     </div>
   );

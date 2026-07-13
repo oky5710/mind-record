@@ -21,13 +21,18 @@ interface Props {
   onCancel: () => void;
   isPending?: boolean;
   error?: string | null;
+  defaultValues?: { type?: string; durationMinutes?: number; intensity?: number | null };
 }
 
-export default function ExerciseForm({ onSubmit, onCancel, isPending, error }: Props) {
-  const [exerciseType, setExerciseType] = useState<ExerciseType>("유산소");
-  const [customTitle, setCustomTitle] = useState("");
-  const [durationMinutes, setDurationMinutes] = useState<number | "">("");
-  const [intensity, setIntensity] = useState<number>(3);
+export default function ExerciseForm({ onSubmit, onCancel, isPending, error, defaultValues }: Props) {
+  const initialType = defaultValues?.type;
+  const isKnownType = initialType === "유산소" || initialType === "근력 운동";
+  const [exerciseType, setExerciseType] = useState<ExerciseType>(
+    isKnownType ? (initialType as ExerciseType) : initialType ? "직접입력" : "유산소"
+  );
+  const [customTitle, setCustomTitle] = useState(isKnownType ? "" : initialType ?? "");
+  const [durationMinutes, setDurationMinutes] = useState<number | "">(defaultValues?.durationMinutes ?? "");
+  const [intensity, setIntensity] = useState<number>(defaultValues?.intensity ?? 3);
   const [submitted, setSubmitted] = useState(false);
 
   const titleError = submitted && exerciseType === "직접입력" && !customTitle.trim();

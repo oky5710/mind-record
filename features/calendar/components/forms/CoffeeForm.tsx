@@ -19,6 +19,7 @@ interface Props {
   onCancel: () => void;
   isPending?: boolean;
   error?: string | null;
+  defaultValues?: { type?: string; time?: string; memo?: string };
 }
 
 function getCurrentTime() {
@@ -26,11 +27,15 @@ function getCurrentTime() {
   return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 }
 
-export default function CoffeeForm({ onSubmit, onCancel, isPending, error }: Props) {
-  const [coffeeType, setCoffeeType] = useState<CoffeeType>("아메리카노");
-  const [customType, setCustomType] = useState("");
-  const [time, setTime] = useState(getCurrentTime);
-  const [memo, setMemo] = useState("");
+export default function CoffeeForm({ onSubmit, onCancel, isPending, error, defaultValues }: Props) {
+  const initialType = defaultValues?.type;
+  const isKnownType = (COFFEE_TYPES as readonly string[]).includes(initialType ?? "") && initialType !== "직접입력";
+  const [coffeeType, setCoffeeType] = useState<CoffeeType>(
+    isKnownType ? (initialType as CoffeeType) : initialType ? "직접입력" : "아메리카노"
+  );
+  const [customType, setCustomType] = useState(isKnownType ? "" : initialType ?? "");
+  const [time, setTime] = useState(defaultValues?.time ?? getCurrentTime());
+  const [memo, setMemo] = useState(defaultValues?.memo ?? "");
   const [submitted, setSubmitted] = useState(false);
 
   const typeError = submitted && coffeeType === "직접입력" && !customType.trim();
