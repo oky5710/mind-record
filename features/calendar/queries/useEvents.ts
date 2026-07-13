@@ -3,7 +3,7 @@ import { useAuthedFetch } from "@/features/shared/lib/authFetch";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001";
 
-export type EventType = "MEDICATION_CHANGE" | "RELATIONSHIP_ISSUE" | "WORK_STRESS" | "OTHER";
+export type EventType = "MEDICATION_CHANGE" | "RELATIONSHIP_ISSUE" | "WORK_STRESS" | "HOSPITAL_VISIT" | "OTHER";
 
 export type Sentiment = "POSITIVE" | "NEGATIVE" | "NEUTRAL";
 

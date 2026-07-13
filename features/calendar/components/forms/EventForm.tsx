@@ -10,6 +10,7 @@ export const EVENT_TYPE_LABELS: Record<EventType, string> = {
   MEDICATION_CHANGE: "약 변경",
   RELATIONSHIP_ISSUE: "대인관계 문제",
   WORK_STRESS: "업무 스트레스",
+  HOSPITAL_VISIT: "병원 진료",
   OTHER: "기타",
 };
 
