@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { ElementType, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, UIEvent as ReactUIEvent } from "react";
+import type { CSSProperties, ElementType, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, UIEvent as ReactUIEvent } from "react";
 import * as d3 from "d3";
 import styled from "styled-components";
 import { ChartWrapper, ChartEmptyState } from "@/features/chart/components/charts/ChartLayout";
@@ -12,7 +12,6 @@ import MedicationIcon from "@mui/icons-material/Medication";
 import GroupsIcon from "@mui/icons-material/Groups";
 import WorkIcon from "@mui/icons-material/Work";
 import LocalHospitalIcon from "@mui/icons-material/LocalHospital";
-import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 
 export interface HrvSamplePoint {
   timestamp: string;
@@ -44,13 +43,24 @@ export interface EventPoint {
   description?: string;
 }
 
+// "기타" 유형은 MUI 아이콘 대신 45도 회전한 정사각형(다이아몬드)으로 표시
+function DiamondIcon(props: { x?: number; y?: number; width?: number | string; height?: number | string; style?: CSSProperties }) {
+  const { x, y, width = "1em", height = "1em", style } = props;
+  const fillColor = style?.fill ?? style?.color ?? "currentColor";
+  return (
+    <svg x={x} y={y} width={width} height={height} viewBox="0 0 24 24" style={style}>
+      <rect x="7" y="7" width="10" height="10" transform="rotate(45 12 12)" fill={fillColor} />
+    </svg>
+  );
+}
+
 const EVENT_COLOR = "#334155";
 const EVENT_TYPE_CONFIG: Record<string, { label: string; icon: ElementType }> = {
   MEDICATION_CHANGE: { label: "약 변경", icon: MedicationIcon },
   RELATIONSHIP_ISSUE: { label: "대인관계 문제", icon: GroupsIcon },
   WORK_STRESS: { label: "업무 스트레스", icon: WorkIcon },
   HOSPITAL_VISIT: { label: "병원 진료", icon: LocalHospitalIcon },
-  OTHER: { label: "기타", icon: MoreHorizIcon },
+  OTHER: { label: "기타", icon: DiamondIcon },
 };
 
 interface Props {
