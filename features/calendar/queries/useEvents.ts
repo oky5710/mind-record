@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthedFetch } from "@/features/shared/lib/authFetch";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001";
@@ -14,6 +14,26 @@ export interface EventPayload {
   description?: string;
   sentiment?: Sentiment;
   intensity?: number;
+}
+
+export interface EventRecord extends EventPayload {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export function useEventList(date?: string) {
+  const { authedFetch, token, isReady } = useAuthedFetch();
+  return useQuery({
+    queryKey: ["events", date],
+    queryFn: async (): Promise<EventRecord[]> => {
+      const url = date ? `${BASE_URL}/events?date=${date}` : `${BASE_URL}/events`;
+      const res = await authedFetch(url);
+      if (!res.ok) throw new Error("이벤트 조회 실패");
+      return res.json();
+    },
+    enabled: isReady && !!token,
+  });
 }
 
 export function useCreateEvent() {

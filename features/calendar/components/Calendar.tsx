@@ -9,7 +9,9 @@ import { useHrvList, type HrvRecord } from "@/features/calendar/queries/useHrv";
 import { useExerciseList, type ExerciseRecord } from "@/features/calendar/queries/useExercise";
 import { useCoffeeList, type CoffeeRecord } from "@/features/calendar/queries/useCoffee";
 import { useMoodList, type MoodRecord } from "@/features/calendar/queries/useMood";
+import { useEventList, type EventRecord } from "@/features/calendar/queries/useEvents";
 import { MOOD_OPTIONS } from "./forms/MoodForm";
+import { EVENT_TYPE_LABELS } from "./forms/EventForm";
 
 function getMoodOption(score: number) {
   return MOOD_OPTIONS.find((o) => o.score === score);
@@ -77,6 +79,30 @@ function ExerciseDetailSheet({ record, onClose }: { record: ExerciseRecord; onCl
   );
 }
 
+function EventDetailSheet({ record, onClose }: { record: EventRecord; onClose: () => void }) {
+  const date = new Date(record.date);
+  const dateLabel = `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}`;
+
+  return (
+    <BottomSheet open onOpenChange={(v) => !v && onClose()} title={`이벤트 — ${dateLabel}`}>
+      <div className="pt-4 flex flex-col gap-1">
+        {[
+          { label: "유형", value: EVENT_TYPE_LABELS[record.type] },
+          { label: "제목", value: record.title },
+          { label: "설명", value: record.description },
+        ]
+          .filter(({ value }) => value !== undefined)
+          .map(({ label, value }) => (
+            <div key={label} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
+              <span className="text-sm text-muted-foreground">{label}</span>
+              <span className="text-sm font-medium">{value}</span>
+            </div>
+          ))}
+      </div>
+    </BottomSheet>
+  );
+}
+
 export default function Calendar() {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
@@ -85,11 +111,13 @@ export default function Calendar() {
   const [selectedHrv, setSelectedHrv] = useState<HrvRecord | null>(null);
   const [selectedExercise, setSelectedExercise] = useState<ExerciseRecord | null>(null);
   const [selectedCoffee, setSelectedCoffee] = useState<CoffeeRecord | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<EventRecord | null>(null);
 
   const { data: hrvList } = useHrvList();
   const { data: exerciseList } = useExerciseList();
   const { data: coffeeList } = useCoffeeList();
   const { data: moodList } = useMoodList();
+  const { data: eventList } = useEventList();
 
   const hrvByDate = useMemo(() => {
     const map = new Map<string, HrvRecord[]>();
@@ -131,6 +159,16 @@ export default function Calendar() {
     return map;
   }, [moodList]);
 
+  const eventByDate = useMemo(() => {
+    const map = new Map<string, EventRecord[]>();
+    eventList?.forEach((r) => {
+      const key = r.date.slice(0, 10);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(r);
+    });
+    return map;
+  }, [eventList]);
+
   function getHrvForDay(day: number): HrvRecord[] {
     const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     return hrvByDate.get(key) ?? [];
@@ -149,6 +187,11 @@ export default function Calendar() {
   function getMoodsForDay(day: number): MoodRecord[] {
     const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     return moodByDate.get(key) ?? [];
+  }
+
+  function getEventsForDay(day: number): EventRecord[] {
+    const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    return eventByDate.get(key) ?? [];
   }
 
   const daysInMonth = getDaysInMonth(year, month);
@@ -212,6 +255,7 @@ export default function Calendar() {
               const exerciseRecords = day !== null ? getExercisesForDay(day) : [];
               const coffeeRecords = day !== null ? getCoffeesForDay(day) : [];
               const moodRecords = day !== null ? getMoodsForDay(day) : [];
+              const eventRecords = day !== null ? getEventsForDay(day) : [];
               return (
                 <div
                   key={di}
@@ -275,6 +319,17 @@ export default function Calendar() {
                             </span>
                           </button>
                         )}
+                        {eventRecords.map((r) => (
+                          <button
+                            key={r.id}
+                            onClick={(e) => { e.stopPropagation(); setSelectedEvent(r); }}
+                            className="w-full text-left px-1 py-0.5 rounded bg-purple-500/15 hover:bg-purple-500/25 transition-colors"
+                          >
+                            <span className="text-[10px] font-medium text-purple-700 dark:text-purple-400 leading-tight block truncate">
+                              {r.title}
+                            </span>
+                          </button>
+                        ))}
                       </div>
                     </>
                   )}
@@ -297,6 +352,9 @@ export default function Calendar() {
       )}
       {selectedCoffee && (
         <CoffeeDetailSheet record={selectedCoffee} onClose={() => setSelectedCoffee(null)} />
+      )}
+      {selectedEvent && (
+        <EventDetailSheet record={selectedEvent} onClose={() => setSelectedEvent(null)} />
       )}
     </div>
   );
