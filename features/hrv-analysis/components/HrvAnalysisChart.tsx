@@ -1,12 +1,18 @@
 "use client";
 
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, UIEvent as ReactUIEvent } from "react";
+import type { ElementType, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, UIEvent as ReactUIEvent } from "react";
 import * as d3 from "d3";
 import styled from "styled-components";
 import { ChartWrapper, ChartEmptyState } from "@/features/chart/components/charts/ChartLayout";
 import SimpleTooltip from "./SimpleTooltip";
 import CoffeeIcon from "@mui/icons-material/Coffee";
+import FavoriteIcon from "@mui/icons-material/Favorite";
+import MedicationIcon from "@mui/icons-material/Medication";
+import GroupsIcon from "@mui/icons-material/Groups";
+import WorkIcon from "@mui/icons-material/Work";
+import LocalHospitalIcon from "@mui/icons-material/LocalHospital";
+import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 
 export interface HrvSamplePoint {
   timestamp: string;
@@ -30,6 +36,21 @@ export interface MoodPoint {
   date: string;
   score: number;
 }
+
+export interface EventPoint {
+  date: string;
+  type: string;
+  title: string;
+}
+
+const EVENT_COLOR = "#8b5cf6";
+const EVENT_TYPE_CONFIG: Record<string, { label: string; icon: ElementType }> = {
+  MEDICATION_CHANGE: { label: "약 변경", icon: MedicationIcon },
+  RELATIONSHIP_ISSUE: { label: "대인관계 문제", icon: GroupsIcon },
+  WORK_STRESS: { label: "업무 스트레스", icon: WorkIcon },
+  HOSPITAL_VISIT: { label: "병원 진료", icon: LocalHospitalIcon },
+  OTHER: { label: "기타", icon: MoreHorizIcon },
+};
 
 interface Props {
   data: HrvSamplePoint[];
@@ -56,6 +77,8 @@ interface Props {
   examTimes?: string[];
   /** 같은 시간 축 아래에 날짜별 기분 점수(1~5)를 하루짜리 사각형으로 표시 */
   moodData?: MoodPoint[];
+  /** 같은 간트 레인 위에 이벤트를 유형별로 다른 아이콘(같은 색)으로 표시 */
+  eventPoints?: EventPoint[];
   /** 검사 결과의 SDNN 값을 검사 시점의 HRV 라인 차트 위에 녹색 세모로 표시 */
   examSdnnPoints?: HrvSamplePoint[];
   /** true면 개별 샘플 대신 하루 중앙값 하나로 묶어서 라인을 그림 (일 단위 개요용) */
@@ -68,13 +91,15 @@ interface Props {
   onScrollNearEdge?: (direction: "past" | "future") => void;
 }
 
-type SeriesKind = "line" | "gantt" | "dot" | "mood";
+type SeriesKind = "line" | "gantt" | "dot" | "mood" | "eventIcon";
 
 interface SeriesDef {
   key: string;
   label: string;
   color: string;
   kind: SeriesKind;
+  /** 범례 및 차트 마커에 원/이모지 대신 표시할 아이콘 (커피/기분/이벤트) */
+  icon?: ElementType;
 }
 
 const MARGIN = { top: 16, right: 16, bottom: 28 };
@@ -255,6 +280,7 @@ export default function HrvAnalysisChart({
   coffeeTimes,
   examTimes,
   moodData,
+  eventPoints,
   examSdnnPoints,
   dailyMedian = false,
   monthlyRange = false,
@@ -296,11 +322,16 @@ export default function HrvAnalysisChart({
     if (sleepRanges) list.push({ key: "sleep", label: "수면", color: "#6366f1", kind: "gantt" });
     if (exerciseRanges) list.push({ key: "exercise", label: "운동", color: "#f97316", kind: "gantt" });
     if (googleCalendarRanges) list.push({ key: "gcal", label: "구글 캘린더", color: "#ec4899", kind: "gantt" });
-    if (coffeeTimes) list.push({ key: "coffee", label: "커피", color: "#92400e", kind: "dot" });
+    if (coffeeTimes) list.push({ key: "coffee", label: "커피", color: "#92400e", kind: "dot", icon: CoffeeIcon });
     if (examTimes) list.push({ key: "exam", label: "검사", color: "#dc2626", kind: "dot" });
-    if (moodData) list.push({ key: "mood", label: "기분", color: "#f59e0b", kind: "mood" });
+    if (moodData) list.push({ key: "mood", label: "기분", color: "#f59e0b", kind: "mood", icon: FavoriteIcon });
+    if (eventPoints) {
+      Object.entries(EVENT_TYPE_CONFIG).forEach(([type, cfg]) => {
+        list.push({ key: `event_${type}`, label: cfg.label, color: EVENT_COLOR, kind: "eventIcon", icon: cfg.icon });
+      });
+    }
     return list;
-  }, [color, sleepRanges, exerciseRanges, googleCalendarRanges, coffeeTimes, examTimes, moodData]);
+  }, [color, sleepRanges, exerciseRanges, googleCalendarRanges, coffeeTimes, examTimes, moodData, eventPoints]);
 
   const moodColorScale = useMemo(
     () => d3.scaleLinear<string>().domain([1, 3, 5]).range(["#ef4444", "#f59e0b", "#22c55e"]).clamp(true),
@@ -967,6 +998,26 @@ export default function HrvAnalysisChart({
                             </text>
                           );
                         })}
+                      {(eventPoints ?? []).map((ev, ei) => {
+                        if (hiddenKeys.has(`event_${ev.type}`)) return null;
+                        const cfg = EVENT_TYPE_CONFIG[ev.type] ?? EVENT_TYPE_CONFIG.OTHER;
+                        const day = ev.date.slice(0, 10);
+                        const start = new Date(`${day}T00:00:00`);
+                        const x = xScale(start);
+                        if (x < 0 || x > innerWidth) return null;
+                        const cy = jitteredLaneY(`event-${ev.date}-${ev.type}-${ei}`, laneY, laneHeight, 9);
+                        const Icon = cfg.icon;
+                        return (
+                          <Icon
+                            key={ei}
+                            x={x - 8}
+                            y={cy - 8}
+                            width={16}
+                            height={16}
+                            style={{ fill: EVENT_COLOR }}
+                          />
+                        );
+                      })}
                     </>
                   );
                 })()}
@@ -975,17 +1026,20 @@ export default function HrvAnalysisChart({
         </PlotArea>
       </ScrollContainer>
       <LegendRow>
-        {seriesDefs.map((s) => (
-          <LegendItem
-            key={s.key}
-            type="button"
-            $active={!hiddenKeys.has(s.key)}
-            onClick={() => toggleSeries(s.key)}
-          >
-            <LegendDot style={{ background: s.color }} />
-            {s.label}
-          </LegendItem>
-        ))}
+        {seriesDefs.map((s) => {
+          const Icon = s.icon;
+          return (
+            <LegendItem
+              key={s.key}
+              type="button"
+              $active={!hiddenKeys.has(s.key)}
+              onClick={() => toggleSeries(s.key)}
+            >
+              {Icon ? <Icon style={{ fontSize: 14, color: s.color }} /> : <LegendDot style={{ background: s.color }} />}
+              {s.label}
+            </LegendItem>
+          );
+        })}
       </LegendRow>
       {showHrv && recentAvg !== null && (
         <LegendRow>

@@ -9,6 +9,7 @@ import { useExerciseList } from "@/features/calendar/queries/useExercise";
 import { useCoffeeList } from "@/features/calendar/queries/useCoffee";
 import { useHrvList } from "@/features/calendar/queries/useHrv";
 import { useMoodList } from "@/features/calendar/queries/useMood";
+import { useEventList } from "@/features/calendar/queries/useEvents";
 import { useGoogleCalendarEvents } from "@/features/calendar/queries/useGoogleCalendarEvents";
 import HrvAnalysisChart from "./HrvAnalysisChart";
 import QueryBuilderIcon from '@mui/icons-material/QueryBuilder';
@@ -24,6 +25,7 @@ export default function HrvAnalysisPage() {
   const { data: coffeeData } = useCoffeeList();
   const { data: hrvExamData } = useHrvList();
   const { data: moodData } = useMoodList();
+  const { data: eventData } = useEventList();
   const [mode, setMode] = useState<ViewMode>("hour");
   const [jumpDate, setJumpDate] = useState<string | null>(null);
 
@@ -74,6 +76,11 @@ export default function HrvAnalysisPage() {
   const moodPoints = useMemo(
     () => (moodData ?? []).map((m) => ({ date: m.date, score: m.score })),
     [moodData]
+  );
+
+  const eventPoints = useMemo(
+    () => (eventData ?? []).map((e) => ({ date: e.date, type: e.type, title: e.title })),
+    [eventData]
   );
 
   const googleCalendarRanges = useMemo(
@@ -174,6 +181,7 @@ export default function HrvAnalysisPage() {
             coffeeTimes={coffeeTimes}
             examTimes={examTimes}
             moodData={moodPoints}
+            eventPoints={eventPoints}
             examSdnnPoints={examSdnnPoints}
           />
         )}
@@ -192,6 +200,7 @@ export default function HrvAnalysisPage() {
             coffeeTimes={coffeeTimes}
             examTimes={examTimes}
             moodData={moodPoints}
+            eventPoints={eventPoints}
             examSdnnPoints={examSdnnPoints}
           />
         )}
@@ -213,6 +222,7 @@ export default function HrvAnalysisPage() {
             coffeeTimes={coffeeTimes}
             examTimes={examTimes}
             moodData={moodPoints}
+            eventPoints={eventPoints}
             examSdnnPoints={examSdnnPoints}
           />
         )}
