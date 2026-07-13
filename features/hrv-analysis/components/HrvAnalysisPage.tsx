@@ -79,7 +79,7 @@ export default function HrvAnalysisPage() {
   );
 
   const eventPoints = useMemo(
-    () => (eventData ?? []).map((e) => ({ date: e.date, type: e.type, title: e.title })),
+    () => (eventData ?? []).map((e) => ({ date: e.date, type: e.type, title: e.title, description: e.description })),
     [eventData]
   );
 

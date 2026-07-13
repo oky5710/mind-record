@@ -41,6 +41,7 @@ export interface EventPoint {
   date: string;
   type: string;
   title: string;
+  description?: string;
 }
 
 const EVENT_COLOR = "#334155";
@@ -263,6 +264,14 @@ function formatGanttTooltipLabel(laneKey: string, r: GanttRange, start: Date, en
   }
 
   return `${dateLabel} ${timeRange}`;
+}
+
+function formatEventTooltipLabel(ev: EventPoint) {
+  const dateLabel = formatYmd(new Date(`${ev.date.slice(0, 10)}T00:00:00`));
+  const typeLabel = EVENT_TYPE_CONFIG[ev.type]?.label ?? ev.type;
+  const lines = [dateLabel, `${typeLabel}: ${ev.title}`];
+  if (ev.description) lines.push(ev.description);
+  return lines.join("\n");
 }
 
 export default function HrvAnalysisChart({
@@ -1007,6 +1016,7 @@ export default function HrvAnalysisChart({
                         if (x < 0 || x > innerWidth) return null;
                         const cy = jitteredLaneY(`event-${ev.date}-${ev.type}-${ei}`, laneY, laneHeight, 9);
                         const Icon = cfg.icon;
+                        const tooltipLabel = formatEventTooltipLabel(ev);
                         return (
                           <Icon
                             key={ei}
@@ -1014,7 +1024,10 @@ export default function HrvAnalysisChart({
                             y={cy - 8}
                             width={16}
                             height={16}
-                            style={{ fill: EVENT_COLOR }}
+                            style={{ fill: EVENT_COLOR, cursor: "pointer" }}
+                            onPointerMove={(e: ReactPointerEvent<SVGElement>) => handleGanttPointerMove(e, tooltipLabel)}
+                            onPointerLeave={handleGanttPointerLeave}
+                            onClick={(e: ReactMouseEvent<SVGElement>) => handleGanttClick(e, tooltipLabel)}
                           />
                         );
                       })}
