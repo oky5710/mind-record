@@ -43,7 +43,7 @@ export interface EventPoint {
   title: string;
 }
 
-const EVENT_COLOR = "#8b5cf6";
+const EVENT_COLOR = "#334155";
 const EVENT_TYPE_CONFIG: Record<string, { label: string; icon: ElementType }> = {
   MEDICATION_CHANGE: { label: "약 변경", icon: MedicationIcon },
   RELATIONSHIP_ISSUE: { label: "대인관계 문제", icon: GroupsIcon },
