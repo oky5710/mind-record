@@ -277,9 +277,10 @@ function formatGanttTooltipLabel(laneKey: string, r: GanttRange, start: Date, en
 }
 
 function formatEventTooltipLabel(ev: EventPoint) {
-  const dateLabel = formatYmd(new Date(`${ev.date.slice(0, 10)}T00:00:00`));
+  const d = new Date(ev.date);
+  const dateTimeLabel = isNaN(d.getTime()) ? ev.date : formatYmdHm(d);
   const typeLabel = EVENT_TYPE_CONFIG[ev.type]?.label ?? ev.type;
-  const lines = [dateLabel, `${typeLabel}: ${ev.title}`];
+  const lines = [dateTimeLabel, `${typeLabel}: ${ev.title}`];
   if (ev.description) lines.push(ev.description);
   return lines.join("\n");
 }
@@ -1020,8 +1021,8 @@ export default function HrvAnalysisChart({
                       {(eventPoints ?? []).map((ev, ei) => {
                         if (hiddenKeys.has(`event_${ev.type}`)) return null;
                         const cfg = EVENT_TYPE_CONFIG[ev.type] ?? EVENT_TYPE_CONFIG.OTHER;
-                        const day = ev.date.slice(0, 10);
-                        const start = new Date(`${day}T00:00:00`);
+                        const start = new Date(ev.date);
+                        if (isNaN(start.getTime())) return null;
                         const x = xScale(start);
                         if (x < 0 || x > innerWidth) return null;
                         const cy = jitteredLaneY(`event-${ev.date}-${ev.type}-${ei}`, laneY, laneHeight, 9);

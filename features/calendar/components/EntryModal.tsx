@@ -92,10 +92,11 @@ export default function EntryModal({ date, onClose }: Props) {
   }
 
   async function handleEventSubmit(data: EventFormData) {
-    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    const [hours, minutes] = data.time.split(":").map(Number);
+    const dateObj = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours, minutes);
     const title = data.type === "OTHER" ? data.customTitle : EVENT_TYPE_LABELS[data.type];
     await createEvent({
-      date: dateStr,
+      date: dateObj.toISOString(),
       type: data.type,
       title,
       ...(data.description ? { description: data.description } : {}),

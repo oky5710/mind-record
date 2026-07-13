@@ -22,6 +22,7 @@ export interface EventFormData {
   type: EventType;
   customTitle: string;
   description: string;
+  time: string;
 }
 
 interface Props {
@@ -31,10 +32,16 @@ interface Props {
   error?: string | null;
 }
 
+function getCurrentTime() {
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+}
+
 export default function EventForm({ onSubmit, onCancel, isPending, error }: Props) {
   const [type, setType] = useState<EventType>("MEDICATION_CHANGE");
   const [customTitle, setCustomTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [time, setTime] = useState(getCurrentTime);
   const [submitted, setSubmitted] = useState(false);
 
   const titleError = submitted && type === "OTHER" && !customTitle.trim();
@@ -43,7 +50,7 @@ export default function EventForm({ onSubmit, onCancel, isPending, error }: Prop
     e.preventDefault();
     setSubmitted(true);
     if (type === "OTHER" && !customTitle.trim()) return;
-    onSubmit({ type, customTitle: customTitle.trim(), description: description.trim() });
+    onSubmit({ type, customTitle: customTitle.trim(), description: description.trim(), time });
   }
 
   return (
@@ -84,6 +91,17 @@ export default function EventForm({ onSubmit, onCancel, isPending, error }: Prop
           />
         )}
         {titleError && <p className="text-xs text-destructive">내용을 입력해주세요.</p>}
+      </div>
+
+      {/* 시간 */}
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-medium">시간</span>
+        <input
+          type="time"
+          value={time}
+          onChange={(e) => setTime(e.target.value)}
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        />
       </div>
 
       {/* 설명 */}

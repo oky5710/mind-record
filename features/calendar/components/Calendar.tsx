@@ -82,6 +82,7 @@ function ExerciseDetailSheet({ record, onClose }: { record: ExerciseRecord; onCl
 function EventDetailSheet({ record, onClose }: { record: EventRecord; onClose: () => void }) {
   const date = new Date(record.date);
   const dateLabel = `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}`;
+  const timeLabel = `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 
   return (
     <BottomSheet open onOpenChange={(v) => !v && onClose()} title={`이벤트 — ${dateLabel}`}>
@@ -89,6 +90,7 @@ function EventDetailSheet({ record, onClose }: { record: EventRecord; onClose: (
         {[
           { label: "유형", value: EVENT_TYPE_LABELS[record.type] },
           { label: "제목", value: record.title },
+          { label: "시간", value: timeLabel },
           { label: "설명", value: record.description },
         ]
           .filter(({ value }) => value !== undefined)
