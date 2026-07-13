@@ -265,17 +265,16 @@ export default function Calendar() {
                             </span>
                           </button>
                         ))}
-                        {coffeeRecords.map((r) => (
+                        {coffeeRecords.length > 0 && (
                           <button
-                            key={r.id}
-                            onClick={(e) => { e.stopPropagation(); setSelectedCoffee(r); }}
+                            onClick={(e) => { e.stopPropagation(); setSelectedCoffee(coffeeRecords[0]); }}
                             className="w-full text-left px-1 py-0.5 rounded bg-amber-500/15 hover:bg-amber-500/25 transition-colors"
                           >
                             <span className="text-[10px] font-medium text-amber-700 dark:text-amber-400 leading-tight block truncate">
-                              {r.type ?? "커피"}
+                              커피{coffeeRecords.length > 1 ? ` ×${coffeeRecords.length}` : ""}
                             </span>
                           </button>
-                        ))}
+                        )}
                       </div>
                     </>
                   )}
