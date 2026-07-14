@@ -128,10 +128,12 @@ export function useLogMedicationTiming() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (timing: DoseTiming) => {
+      const now = new Date();
+      const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
       const res = await authedFetch(`${BASE_URL}/medications/logs/quick`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ timing }),
+        body: JSON.stringify({ timing, date }),
       });
       if (!res.ok) throw new Error("복용 기록 저장 실패");
       return res.json();
