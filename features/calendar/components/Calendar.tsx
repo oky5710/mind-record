@@ -31,6 +31,7 @@ import {
 } from "@/features/calendar/queries/useEvents";
 import { MOOD_OPTIONS } from "./forms/MoodForm";
 import { EVENT_TYPE_LABELS } from "./forms/EventForm";
+import { useMedicationLogList } from "@/features/medicine/queries/useMedications";
 
 function getMoodOption(score: number) {
   return MOOD_OPTIONS.find((o) => o.score === score);
@@ -330,6 +331,7 @@ export default function Calendar() {
   const { data: coffeeList } = useCoffeeList();
   const { data: moodList } = useMoodList();
   const { data: eventList } = useEventList();
+  const { data: medicationLogList } = useMedicationLogList();
 
   const hrvByDate = useMemo(() => {
     const map = new Map<string, HrvRecord[]>();
@@ -381,6 +383,19 @@ export default function Calendar() {
     return map;
   }, [eventList]);
 
+  const medicationChecksByDate = useMemo(() => {
+    const map = new Map<string, { morning: boolean; bedtime: boolean }>();
+    medicationLogList?.forEach((l) => {
+      if (!l.taken) return;
+      const key = l.date.slice(0, 10);
+      const entry = map.get(key) ?? { morning: false, bedtime: false };
+      if (l.timing === "MORNING") entry.morning = true;
+      if (l.timing === "BEDTIME") entry.bedtime = true;
+      map.set(key, entry);
+    });
+    return map;
+  }, [medicationLogList]);
+
   function getHrvForDay(day: number): HrvRecord[] {
     const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     return hrvByDate.get(key) ?? [];
@@ -404,6 +419,11 @@ export default function Calendar() {
   function getEventsForDay(day: number): EventRecord[] {
     const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     return eventByDate.get(key) ?? [];
+  }
+
+  function getMedicationChecksForDay(day: number): { morning: boolean; bedtime: boolean } {
+    const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    return medicationChecksByDate.get(key) ?? { morning: false, bedtime: false };
   }
 
   const daysInMonth = getDaysInMonth(year, month);
@@ -468,6 +488,7 @@ export default function Calendar() {
               const coffeeRecords = day !== null ? getCoffeesForDay(day) : [];
               const moodRecords = day !== null ? getMoodsForDay(day) : [];
               const eventRecords = day !== null ? getEventsForDay(day) : [];
+              const medicationChecks = day !== null ? getMedicationChecksForDay(day) : { morning: false, bedtime: false };
               return (
                 <div
                   key={di}
@@ -492,16 +513,24 @@ export default function Calendar() {
                         >
                           {day}
                         </span>
-                        {moodRecords.map((r) => (
-                          <button
-                            key={r.id}
-                            onClick={(e) => { e.stopPropagation(); setSelectedMood(r); }}
-                            className="text-base leading-none"
-                            aria-label="기분"
-                          >
-                            {getMoodOption(r.score)?.icon}
-                          </button>
-                        ))}
+                        <div className="flex items-center gap-1">
+                          {medicationChecks.morning && (
+                            <span className="text-orange-500 text-xs font-bold" aria-label="아침 복용">✓</span>
+                          )}
+                          {medicationChecks.bedtime && (
+                            <span className="text-indigo-500 text-xs font-bold" aria-label="취침 복용">✓</span>
+                          )}
+                          {moodRecords.map((r) => (
+                            <button
+                              key={r.id}
+                              onClick={(e) => { e.stopPropagation(); setSelectedMood(r); }}
+                              className="text-base leading-none"
+                              aria-label="기분"
+                            >
+                              {getMoodOption(r.score)?.icon}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                       <div className="w-full flex flex-col gap-0.5">
                         {hrvRecords.map((r) => (

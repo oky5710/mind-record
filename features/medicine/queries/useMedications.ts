@@ -25,6 +25,17 @@ export interface Medication {
   timings: DoseTiming[];
 }
 
+export interface MedicationLogRecord {
+  id: string;
+  medicationId: string;
+  date: string;
+  timing: DoseTiming | null;
+  takenAt: string | null;
+  dosage: number | null;
+  taken: boolean;
+  medication: Medication;
+}
+
 export interface DrugItem {
   itemSeq: string;
   itemName: string;
@@ -93,6 +104,40 @@ export function useRemoveMedication() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["medications"] });
+    },
+  });
+}
+
+export function useMedicationLogList(date?: string) {
+  const { authedFetch, token, isReady } = useAuthedFetch();
+  return useQuery({
+    queryKey: ["medication-logs", date],
+    queryFn: async (): Promise<MedicationLogRecord[]> => {
+      const url = date ? `${BASE_URL}/medications/logs?date=${date}` : `${BASE_URL}/medications/logs`;
+      const res = await authedFetch(url);
+      if (!res.ok) throw new Error("복용 기록 조회 실패");
+      return res.json();
+    },
+    enabled: isReady && !!token,
+  });
+}
+
+// 메인 화면 아침/취침 퀵버튼 — 해당 시간대에 복용하는 약 전부를 한 번에 복용 처리
+export function useLogMedicationTiming() {
+  const { authedFetch } = useAuthedFetch();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (timing: DoseTiming) => {
+      const res = await authedFetch(`${BASE_URL}/medications/logs/quick`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ timing }),
+      });
+      if (!res.ok) throw new Error("복용 기록 저장 실패");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["medication-logs"] });
     },
   });
 }

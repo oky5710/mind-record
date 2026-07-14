@@ -7,6 +7,7 @@ import { useCatPhoto } from "@/features/home/queries/useCatPhoto";
 import Navigation from "@/features/shared/components/Navigation";
 import { useCreateCoffee, useCoffeeList } from "@/features/calendar/queries/useCoffee";
 import { useCreateMood, useMoodList } from "@/features/calendar/queries/useMood";
+import { useLogMedicationTiming, useMedicationLogList } from "@/features/medicine/queries/useMedications";
 
 const MOOD_OPTIONS = [
   { score: 1, icon: "😞" },
@@ -40,6 +41,10 @@ export default function EntryScreen() {
   const hasTodayMood = (todayMoods?.length ?? 0) > 0;
   const { data: coffeeList } = useCoffeeList();
   const todayCoffeeCount = (coffeeList ?? []).filter((c) => c.date.slice(0, 10) === todayStr).length;
+  const { mutate: logMedicationTiming, isPending: medicationPending } = useLogMedicationTiming();
+  const { data: todayMedicationLogs } = useMedicationLogList(todayStr);
+  const hasMorningTaken = (todayMedicationLogs ?? []).some((l) => l.timing === "MORNING" && l.taken);
+  const hasBedtimeTaken = (todayMedicationLogs ?? []).some((l) => l.timing === "BEDTIME" && l.taken);
   const [hearts, setHearts] = useState<Heart[]>([]);
   const nextHeartId = useRef(0);
 
@@ -69,6 +74,10 @@ export default function EntryScreen() {
     const now = new Date();
     const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     createMood({ date: dateStr, score });
+  }
+
+  function handleQuickMedication(timing: "MORNING" | "BEDTIME") {
+    logMedicationTiming(timing);
   }
 
   useEffect(() => {
@@ -148,8 +157,29 @@ export default function EntryScreen() {
               </span>
             )}
           </button>
-          <button className="px-5 py-2.5 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 text-white text-sm font-medium hover:bg-white/30 active:bg-white/40 transition-colors">
-            🏃 운동
+          <button
+            onClick={() => handleQuickMedication("MORNING")}
+            disabled={medicationPending}
+            className="relative px-5 py-2.5 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 text-white text-sm font-medium hover:bg-white/30 active:bg-white/40 transition-colors disabled:opacity-50"
+          >
+            🌅 아침
+            {hasMorningTaken && (
+              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center rounded-full bg-orange-500 text-white text-[10px] font-bold border-1 border-white/50">
+                ✓
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => handleQuickMedication("BEDTIME")}
+            disabled={medicationPending}
+            className="relative px-5 py-2.5 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 text-white text-sm font-medium hover:bg-white/30 active:bg-white/40 transition-colors disabled:opacity-50"
+          >
+            🌙 취침
+            {hasBedtimeTaken && (
+              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center rounded-full bg-indigo-500 text-white text-[10px] font-bold border-1 border-white/50">
+                ✓
+              </span>
+            )}
           </button>
         </div>
 
