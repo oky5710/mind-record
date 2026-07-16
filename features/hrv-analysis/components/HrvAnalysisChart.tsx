@@ -1082,7 +1082,7 @@ export default function HrvAnalysisChart({
                 label:
                   tickMode === "date"
                     ? formatYmd(tooltip.date)
-                    : `${formatYmdHm(tooltip.date)} SDNN ${tooltip.value}`,
+                    : `${formatYmdHm(tooltip.date)} SDNN ${tooltip.value.toFixed(2)}`,
               }
             : null
         }

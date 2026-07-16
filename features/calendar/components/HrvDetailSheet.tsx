@@ -70,7 +70,7 @@ export default function HrvDetailSheet({ record, onClose }: Props) {
 
   const rows: { label: string; value: number | string | undefined }[] = [
     { label: "MHR", value: record.mhr },
-    { label: "SDNN", value: record.sdnn },
+    { label: "SDNN", value: record.sdnn?.toFixed(2) },
     { label: "RMSSD", value: record.rmssd },
     { label: "PSI", value: record.psi },
     { label: "TP", value: record.tp },
