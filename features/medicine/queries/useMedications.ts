@@ -122,18 +122,21 @@ export function useMedicationLogList(date?: string) {
   });
 }
 
-// 메인 화면 아침/취침 퀵버튼 — 해당 시간대에 복용하는 약 전부를 한 번에 복용 처리
+function todayStr() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
+// 메인 화면 아침/취침 퀵버튼, 캘린더 약복용 입력 — 해당 시간대에 복용하는 약 전부를 한 번에 복용 처리
 export function useLogMedicationTiming() {
   const { authedFetch } = useAuthedFetch();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (timing: DoseTiming) => {
-      const now = new Date();
-      const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    mutationFn: async ({ timing, date }: { timing: DoseTiming; date?: string }) => {
       const res = await authedFetch(`${BASE_URL}/medications/logs/quick`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ timing, date }),
+        body: JSON.stringify({ timing, date: date ?? todayStr() }),
       });
       if (!res.ok) throw new Error("복용 기록 저장 실패");
       return res.json();

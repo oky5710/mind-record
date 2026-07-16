@@ -77,7 +77,7 @@ export default function EntryScreen() {
   }
 
   function handleQuickMedication(timing: "MORNING" | "BEDTIME") {
-    logMedicationTiming(timing);
+    logMedicationTiming({ timing });
   }
 
   useEffect(() => {

@@ -7,19 +7,22 @@ import ExerciseForm, { type ExerciseFormData } from "./forms/ExerciseForm";
 import CoffeeForm, { type CoffeeFormData } from "./forms/CoffeeForm";
 import MoodForm, { type MoodFormData } from "./forms/MoodForm";
 import EventForm, { type EventFormData, EVENT_TYPE_LABELS } from "./forms/EventForm";
+import MedicationForm, { type MedicationFormData } from "./forms/MedicationForm";
 import { useCreateHrv, type HrvPayload } from "@/features/calendar/queries/useHrv";
 import { useCreateExercise } from "@/features/calendar/queries/useExercise";
 import { useCreateCoffee } from "@/features/calendar/queries/useCoffee";
 import { useCreateMood } from "@/features/calendar/queries/useMood";
 import { useCreateEvent } from "@/features/calendar/queries/useEvents";
+import { useLogMedicationTiming } from "@/features/medicine/queries/useMedications";
 
-type EntryType = "검사" | "운동" | "커피" | "기분" | "이벤트";
+type EntryType = "검사" | "운동" | "커피" | "기분" | "이벤트" | "약복용";
 
 const ENTRY_TYPES: { value: EntryType; label: string; description: string }[] = [
   { value: "검사", label: "검사", description: "정신과 검사 결과 기록" },
   { value: "운동", label: "운동", description: "운동 종류 및 시간 기록" },
   { value: "커피", label: "커피", description: "커피 섭취 기록" },
   { value: "기분", label: "기분", description: "오늘의 기분 및 상태" },
+  { value: "약복용", label: "약복용", description: "아침/취침/필요시 복용 기록" },
   { value: "이벤트", label: "이벤트", description: "정신건강에 영향을 준 사건" },
 ];
 
@@ -51,6 +54,7 @@ export default function EntryModal({ date, onClose }: Props) {
   const { mutateAsync: createCoffee, isPending: coffeePending, error: coffeeError } = useCreateCoffee();
   const { mutateAsync: createMood, isPending: moodPending, error: moodError } = useCreateMood();
   const { mutateAsync: createEvent, isPending: eventPending, error: eventError } = useCreateEvent();
+  const { mutateAsync: logMedicationTiming, isPending: medicationPending, error: medicationError } = useLogMedicationTiming();
 
   function handleOpenChange(open: boolean) {
     if (!open) onClose();
@@ -101,6 +105,12 @@ export default function EntryModal({ date, onClose }: Props) {
       title,
       ...(data.description ? { description: data.description } : {}),
     });
+    onClose();
+  }
+
+  async function handleMedicationSubmit(data: MedicationFormData) {
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    await Promise.all(data.timings.map((timing) => logMedicationTiming({ timing, date: dateStr })));
     onClose();
   }
 
@@ -170,6 +180,14 @@ export default function EntryModal({ date, onClose }: Props) {
               onCancel={onClose}
               isPending={eventPending}
               error={eventError?.message ?? null}
+            />
+          )}
+          {selected === "약복용" && (
+            <MedicationForm
+              onSubmit={handleMedicationSubmit}
+              onCancel={onClose}
+              isPending={medicationPending}
+              error={medicationError?.message ?? null}
             />
           )}
         </div>
