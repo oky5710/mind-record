@@ -1,7 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuthedFetch } from "@/features/shared/lib/authFetch";
-
-const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001";
+import { createResourceQueries } from "@/features/shared/lib/createResourceQueries";
 
 export interface ExercisePayload {
   date: string;
@@ -20,68 +17,18 @@ export interface ExerciseRecord extends Omit<ExercisePayload, "intensity"> {
   updatedAt: string;
 }
 
-export function useExerciseList() {
-  const { authedFetch, token, isReady } = useAuthedFetch();
-  return useQuery({
-    queryKey: ["exercises"],
-    queryFn: async (): Promise<ExerciseRecord[]> => {
-      const res = await authedFetch(`${BASE_URL}/exercises`);
-      if (!res.ok) throw new Error("운동 목록 조회 실패");
-      return res.json();
-    },
-    enabled: isReady && !!token,
-  });
-}
+const exerciseQueries = createResourceQueries<ExercisePayload, ExerciseRecord>({
+  path: "exercises",
+  queryKey: "exercises",
+  messages: {
+    list: "운동 목록 조회 실패",
+    create: "운동 기록 저장 실패",
+    update: "운동 기록 수정 실패",
+    remove: "운동 기록 삭제 실패",
+  },
+});
 
-export function useCreateExercise() {
-  const { authedFetch } = useAuthedFetch();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (payload: ExercisePayload) => {
-      const res = await authedFetch(`${BASE_URL}/exercises`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error("운동 기록 저장 실패");
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["exercises"] });
-    },
-  });
-}
-
-export function useUpdateExercise() {
-  const { authedFetch } = useAuthedFetch();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, payload }: { id: string; payload: Partial<ExercisePayload> }) => {
-      const res = await authedFetch(`${BASE_URL}/exercises/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error("운동 기록 수정 실패");
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["exercises"] });
-    },
-  });
-}
-
-export function useRemoveExercise() {
-  const { authedFetch } = useAuthedFetch();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const res = await authedFetch(`${BASE_URL}/exercises/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("운동 기록 삭제 실패");
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["exercises"] });
-    },
-  });
-}
+export const useExerciseList = exerciseQueries.useList;
+export const useCreateExercise = exerciseQueries.useCreate;
+export const useUpdateExercise = exerciseQueries.useUpdate;
+export const useRemoveExercise = exerciseQueries.useRemove;

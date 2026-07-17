@@ -13,7 +13,7 @@ async function fetchCatPhoto(page: number, index: number): Promise<string> {
     q: "cat",
     image_type: "photo",
     per_page: "200",
-    page: String(1),
+    page: String(page),
   });
   const res = await fetch(`https://pixabay.com/api/?${params}`);
   if (!res.ok) throw new Error("Failed to fetch cat photo");

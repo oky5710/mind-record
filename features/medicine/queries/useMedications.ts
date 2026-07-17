@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthedFetch } from "@/features/shared/lib/authFetch";
+import { createResourceQueries } from "@/features/shared/lib/createResourceQueries";
+import { toLocalDateKey } from "@/features/shared/lib/date";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001";
 
@@ -23,6 +25,17 @@ export interface Medication {
   colorClass?: string;
   chart?: string;
   timings: DoseTiming[];
+}
+
+export interface MedicationPayload {
+  name: string;
+  itemSeq?: string;
+  entpName?: string;
+  itemImage?: string;
+  drugShape?: string;
+  colorClass?: string;
+  chart?: string;
+  timings?: string[];
 }
 
 export interface MedicationLogRecord {
@@ -52,61 +65,21 @@ export interface DrugSearchResult {
   items: DrugItem[];
 }
 
-export function useMedications() {
-  const { authedFetch, token, isReady } = useAuthedFetch();
-  return useQuery({
-    queryKey: ["medications"],
-    queryFn: async (): Promise<Medication[]> => {
-      const res = await authedFetch(`${BASE_URL}/medications`);
-      if (!res.ok) throw new Error("복약 목록 조회 실패");
-      return res.json();
-    },
-    enabled: isReady && !!token,
-  });
-}
+// 카탈로그에 PATCH 엔드포인트가 없어(수정 UI 자체가 없음) update는 만들지 않음
+const medicationQueries = createResourceQueries<MedicationPayload, Medication>({
+  path: "medications",
+  queryKey: "medications",
+  messages: {
+    list: "복약 목록 조회 실패",
+    create: "약 등록 실패",
+    update: "약 수정 실패",
+    remove: "약 삭제 실패",
+  },
+});
 
-export function useAddMedication() {
-  const { authedFetch } = useAuthedFetch();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (body: {
-      name: string;
-      itemSeq?: string;
-      entpName?: string;
-      itemImage?: string;
-      drugShape?: string;
-      colorClass?: string;
-      chart?: string;
-      timings?: string[];
-    }) => {
-      const res = await authedFetch(`${BASE_URL}/medications`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) throw new Error("약 등록 실패");
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["medications"] });
-    },
-  });
-}
-
-export function useRemoveMedication() {
-  const { authedFetch } = useAuthedFetch();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const res = await authedFetch(`${BASE_URL}/medications/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("약 삭제 실패");
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["medications"] });
-    },
-  });
-}
+export const useMedications = medicationQueries.useList;
+export const useAddMedication = medicationQueries.useCreate;
+export const useRemoveMedication = medicationQueries.useRemove;
 
 export function useMedicationLogList(date?: string) {
   const { authedFetch, token, isReady } = useAuthedFetch();
@@ -122,11 +95,6 @@ export function useMedicationLogList(date?: string) {
   });
 }
 
-function todayStr() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-}
-
 // 메인 화면 아침/취침 퀵버튼, 캘린더 약복용 입력 — 해당 시간대에 복용하는 약 전부를 한 번에 복용 처리
 export function useLogMedicationTiming() {
   const { authedFetch } = useAuthedFetch();
@@ -136,7 +104,7 @@ export function useLogMedicationTiming() {
       const res = await authedFetch(`${BASE_URL}/medications/logs/quick`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ timing, date: date ?? todayStr() }),
+        body: JSON.stringify({ timing, date: date ?? toLocalDateKey(new Date().toISOString()) }),
       });
       if (!res.ok) throw new Error("복용 기록 저장 실패");
       return res.json();

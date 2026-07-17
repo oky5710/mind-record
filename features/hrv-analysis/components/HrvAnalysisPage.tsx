@@ -16,14 +16,9 @@ import HrvAnalysisChart from "./HrvAnalysisChart";
 import QueryBuilderIcon from '@mui/icons-material/QueryBuilder';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import BarChartIcon from '@mui/icons-material/BarChart';
+import { toLocalDateKey } from "@/features/shared/lib/date";
 
 type ViewMode = "day" | "hour" | "month";
-
-// toISOString()은 UTC 기준이라 자정 근처(KST)에 실제 로컬 날짜보다 하루 뒤처질 수 있어
-// 로컬 날짜 그대로 문자열로 만듦
-function toLocalDateStr(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 export default function HrvAnalysisPage() {
   const { data, isLoading, error } = useWearableSampleList("heartRateVariability");
@@ -41,9 +36,9 @@ export default function HrvAnalysisPage() {
   const [calendarFrom, setCalendarFrom] = useState(() => {
     const d = new Date();
     d.setFullYear(d.getFullYear() - 1);
-    return toLocalDateStr(d);
+    return toLocalDateKey(d.toISOString());
   });
-  const calendarTo = useMemo(() => toLocalDateStr(new Date()), []);
+  const calendarTo = useMemo(() => toLocalDateKey(new Date().toISOString()), []);
   const { data: googleCalendarEvents } = useGoogleCalendarEvents(calendarFrom, calendarTo);
 
   // 무한 확장 방지용 안전 한계 (과거 15년까지만)
@@ -56,7 +51,7 @@ export default function HrvAnalysisPage() {
       const d = new Date(prev);
       if (now.getFullYear() - d.getFullYear() >= CALENDAR_MIN_YEAR_OFFSET) return prev;
       d.setFullYear(d.getFullYear() - 1);
-      return toLocalDateStr(d);
+      return toLocalDateKey(d.toISOString());
     });
   }
 

@@ -408,7 +408,7 @@ export default function HrvAnalysisChart({
     });
     (coffeeTimes ?? []).forEach((t) => arr.push(new Date(t).getTime()));
     (examTimes ?? []).forEach((t) => arr.push(new Date(t).getTime()));
-    (moodData ?? []).forEach((m) => arr.push(new Date(`${m.date.slice(0, 10)}T00:00:00`).getTime()));
+    (moodData ?? []).forEach((m) => arr.push(new Date(`${toLocalDateKey(m.date)}T00:00:00`).getTime()));
     return arr.filter((t) => !isNaN(t)).sort((a, b) => a - b);
   }, [data, sleepRanges, exerciseRanges, googleCalendarRanges, coffeeTimes, examTimes, moodData]);
 
@@ -1001,7 +1001,7 @@ export default function HrvAnalysisChart({
                         })}
                       {!hiddenKeys.has("mood") &&
                         (moodData ?? []).map((m, mi) => {
-                          const day = m.date.slice(0, 10);
+                          const day = toLocalDateKey(m.date);
                           const start = new Date(`${day}T00:00:00`);
                           const x = xScale(start);
                           if (x < 0 || x > innerWidth) return null;

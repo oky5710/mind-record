@@ -57,14 +57,14 @@ function toWearableChartData(
     .filter((r) => r[field] !== undefined && r[field] !== null)
     .slice()
     .sort((a, b) => a.date.localeCompare(b.date))
-    .map((r) => ({ date: r.date.slice(0, 10), value: r[field] as number }));
+    .map((r) => ({ date: toLocalDateKey(r.date), value: r[field] as number }));
 }
 
 function toMoodChartData(records: MoodRecord[]): ChartDataPoint[] {
   return records
     .slice()
     .sort((a, b) => a.date.localeCompare(b.date))
-    .map((r) => ({ date: r.date.slice(0, 10), value: r.score }));
+    .map((r) => ({ date: toLocalDateKey(r.date), value: r.score }));
 }
 
 function toCoffeeCountChartData(records: CoffeeRecord[]): ChartDataPoint[] {
