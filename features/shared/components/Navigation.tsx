@@ -6,10 +6,10 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 
 const NAV_ITEMS = [
-  { href: "/calendar", label: "입력하기" },
-  { href: "/medicine", label: "복용약" },
-  { href: "/chart", label: "차트보기" },
-  { href: "/hrv-analysis", label: "심박변이 분석" },
+  { href: "/calendar", label: "달력보기" },
+  { href: "/hrv-analysis", label: "오늘의 패턴" },
+  { href: "/chart", label: "나의 Trend" },
+  { href: "/medicine", label: "복용약 관리" },
   { href: "/settings", label: "설정" },
 ];
 

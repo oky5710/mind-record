@@ -32,8 +32,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 ```
 app/
 ├── api/cat-photo/route.ts     # Pixabay 프록시 API
-├── calendar/page.tsx          # 입력하기 페이지
-├── chart/page.tsx             # 차트보기 페이지 (추후 구현)
+├── calendar/page.tsx          # 달력보기 페이지
+├── chart/page.tsx             # 나의 Trend 페이지 (추후 구현)
 ├── components/
 │   ├── BottomSheet.tsx        # 재사용 바텀시트 (고정 헤더 + 스크롤 + 뒤로가기)
 │   ├── Calendar.tsx           # 캘린더 UI
@@ -61,9 +61,10 @@ lib/
 | 경로 | 화면 |
 |---|---|
 | `/` | 진입 화면 (고양이 사진 + 위로 메시지) |
-| `/calendar` | 입력하기 (캘린더) |
-| `/chart` | 차트보기 (HRV/웨어러블/기분/커피 통합 대시보드) |
-| `/hrv-analysis` | 심박변이 분석 (일 단위 / 시간 단위, 날짜 이동) |
+| `/calendar` | 달력보기 (캘린더) |
+| `/hrv-analysis` | 오늘의 패턴 (일 단위 / 시간 단위, 날짜 이동) |
+| `/chart` | 나의 Trend (HRV/웨어러블/기분/커피 통합 대시보드) |
+| `/medicine` | 복용약 관리 |
 
 ## 환경변수
 
@@ -102,13 +103,14 @@ lib/
 
 ## 네비게이션
 
-* 입력하기 → `/calendar`
-* 차트보기 → `/chart`
-* 복용약 -> `/medicine`
+* 달력보기 → `/calendar`
+* 오늘의 패턴 → `/hrv-analysis`
+* 나의 Trend → `/chart`
+* 복용약 관리 -> `/medicine`
 * 진입 화면에서는 투명(흰 텍스트), 일반 페이지에서는 기본 스타일
 * 현재 경로 활성 표시
 
-## 입력하기
+## 달력보기
 
 * 달력 UI, 기본 화면은 현재 월
 * 앞으로/뒤로 버튼으로 월 이동
@@ -116,7 +118,7 @@ lib/
   * 검사 / 기분 / 이벤트 카드 선택 → 클릭 즉시 해당 폼으로 이동
   * 헤더에 뒤로가기 버튼 (유형 선택 화면으로 복귀)
 
-## 복용약
+## 복용약 관리
 * 복용중인 약을 입력한다
 * 약은 `/medications` 에서 약을 검색해서 선택하ㅐ서 입력한다
 
@@ -166,7 +168,7 @@ React Hook Form(`useForm`) 사용.
 * API 문서: `/Users/oky/Desktop/mind-chart-backend/api-docs.html` — 이 파일이 최신 명세 기준
 * API 연동 작업 전 반드시 `api-docs.html`을 먼저 확인한다
 
-## 차트 (차트보기, 심박변이 분석 등)
+## 차트 (나의 Trend, 오늘의 패턴 등)
 
 차트 라이브러리 없이 **d3 + 순수 SVG**로 직접 구현 (`features/chart/components/charts/`, `features/hrv-analysis/components/`). 커스텀 컴포넌트는 styled-components, 레이아웃/버튼류는 Tailwind.
 
