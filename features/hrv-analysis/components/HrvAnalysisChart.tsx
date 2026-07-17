@@ -976,6 +976,7 @@ export default function HrvAnalysisChart({
                               fill="#dc2626"
                               stroke="#fff"
                               strokeWidth={1.5}
+                              paintOrder="stroke"
                             />
                           );
                         })}
@@ -994,7 +995,7 @@ export default function HrvAnalysisChart({
                               y={cy - 8}
                               width={16}
                               height={16}
-                              style={{ fill: isOverLimit ? "#ef4444" : "#92400e", stroke: "#fff", strokeWidth: 1 }}
+                              style={{ fill: isOverLimit ? "#ef4444" : "#92400e", stroke: "#fff", strokeWidth: 1, paintOrder: "stroke" }}
                             />
                           );
                         })}
@@ -1016,6 +1017,7 @@ export default function HrvAnalysisChart({
                               fill={moodColorScale(m.score)}
                               stroke="#fff"
                               strokeWidth={1}
+                              paintOrder="stroke"
                             >
                               ❤
                             </text>
@@ -1038,7 +1040,7 @@ export default function HrvAnalysisChart({
                             y={cy - 8}
                             width={16}
                             height={16}
-                            style={{ fill: EVENT_COLOR, stroke: "#fff", strokeWidth: 1, cursor: "pointer" }}
+                            style={{ fill: EVENT_COLOR, stroke: "#fff", strokeWidth: 1, paintOrder: "stroke", cursor: "pointer" }}
                             onPointerMove={(e: ReactPointerEvent<SVGElement>) => handleGanttPointerMove(e, tooltipLabel)}
                             onPointerLeave={handleGanttPointerLeave}
                             onClick={(e: ReactMouseEvent<SVGElement>) => handleGanttClick(e, tooltipLabel)}
