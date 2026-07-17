@@ -9,6 +9,7 @@ import type { HrvRecord } from "@/features/calendar/queries/useHrv";
 import type { WearableRecord } from "@/features/calendar/queries/useWearable";
 import type { MoodRecord } from "@/features/calendar/queries/useMood";
 import type { CoffeeRecord } from "@/features/calendar/queries/useCoffee";
+import { toLocalDateKey } from "@/features/shared/lib/date";
 
 export type ChartMetric =
   | "heartRate"
@@ -69,7 +70,7 @@ function toMoodChartData(records: MoodRecord[]): ChartDataPoint[] {
 function toCoffeeCountChartData(records: CoffeeRecord[]): ChartDataPoint[] {
   const counts = new Map<string, number>();
   records.forEach((r) => {
-    const date = r.date.slice(0, 10);
+    const date = toLocalDateKey(r.date);
     counts.set(date, (counts.get(date) ?? 0) + 1);
   });
   return Array.from(counts.entries())
@@ -82,7 +83,7 @@ function toExamCircleData(records: HrvRecord[]): ExamCircleDatum[] {
     .filter((r) => r.lfNorm !== undefined && r.lfNorm !== null && r.hfNorm !== undefined && r.hfNorm !== null)
     .slice()
     .sort((a, b) => a.examinedAt.localeCompare(b.examinedAt))
-    .map((r) => ({ date: r.examinedAt.slice(0, 10), lfNorm: r.lfNorm as number, hfNorm: r.hfNorm as number }));
+    .map((r) => ({ date: toLocalDateKey(r.examinedAt), lfNorm: r.lfNorm as number, hfNorm: r.hfNorm as number }));
 }
 
 export default function HrvResultCharts({
@@ -99,7 +100,7 @@ export default function HrvResultCharts({
   const examCircleData = toExamCircleData(records);
 
   function handleSelectExam(date: string) {
-    const record = records.find((r) => r.examinedAt.slice(0, 10) === date) ?? null;
+    const record = records.find((r) => toLocalDateKey(r.examinedAt) === date) ?? null;
     setSelectedRecord(record);
   }
 

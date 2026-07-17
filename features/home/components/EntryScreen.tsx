@@ -8,6 +8,7 @@ import Navigation from "@/features/shared/components/Navigation";
 import { useCreateCoffee, useCoffeeList } from "@/features/calendar/queries/useCoffee";
 import { useCreateMood, useMoodList } from "@/features/calendar/queries/useMood";
 import { useLogMedicationTiming, useMedicationLogList } from "@/features/medicine/queries/useMedications";
+import { toLocalDateKey } from "@/features/shared/lib/date";
 
 const MOOD_OPTIONS = [
   { score: 1, icon: "😞" },
@@ -40,7 +41,7 @@ export default function EntryScreen() {
   const { data: todayMoods } = useMoodList(todayStr);
   const hasTodayMood = (todayMoods?.length ?? 0) > 0;
   const { data: coffeeList } = useCoffeeList();
-  const todayCoffeeCount = (coffeeList ?? []).filter((c) => c.date.slice(0, 10) === todayStr).length;
+  const todayCoffeeCount = (coffeeList ?? []).filter((c) => toLocalDateKey(c.date) === todayStr).length;
   const { mutate: logMedicationTiming, isPending: medicationPending } = useLogMedicationTiming();
   const { data: todayMedicationLogs } = useMedicationLogList(todayStr);
   const hasMorningTaken = (todayMedicationLogs ?? []).some((l) => l.timing === "MORNING" && l.taken);

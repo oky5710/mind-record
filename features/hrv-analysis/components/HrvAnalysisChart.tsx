@@ -6,11 +6,12 @@ import * as d3 from "d3";
 import styled from "styled-components";
 import { ChartWrapper, ChartEmptyState } from "@/features/chart/components/charts/ChartLayout";
 import SimpleTooltip from "./SimpleTooltip";
+import { toLocalDateKey } from "@/features/shared/lib/date";
 import CoffeeIcon from "@mui/icons-material/Coffee";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import MedicationIcon from "@mui/icons-material/Medication";
 import GroupsIcon from "@mui/icons-material/Groups";
-import WorkIcon from "@mui/icons-material/Work";
+import BoltIcon from "@mui/icons-material/Bolt";
 import LocalHospitalIcon from "@mui/icons-material/LocalHospital";
 
 export interface HrvSamplePoint {
@@ -58,7 +59,7 @@ const EVENT_COLOR = "#334155";
 const EVENT_TYPE_CONFIG: Record<string, { label: string; icon: ElementType }> = {
   MEDICATION_CHANGE: { label: "약 변경", icon: MedicationIcon },
   RELATIONSHIP_ISSUE: { label: "대인관계 문제", icon: GroupsIcon },
-  WORK_STRESS: { label: "업무 스트레스", icon: WorkIcon },
+  WORK_STRESS: { label: "업무 스트레스", icon: BoltIcon },
   HOSPITAL_VISIT: { label: "병원 진료", icon: LocalHospitalIcon },
   OTHER: { label: "기타", icon: DiamondIcon },
 };
@@ -954,7 +955,7 @@ export default function HrvAnalysisChart({
                   // 하루에 2잔 이상이면 그날 커피 아이콘을 전부 강조(빨강)
                   const coffeeCountByDay = new Map<string, number>();
                   (coffeeTimes ?? []).forEach((t) => {
-                    const day = t.slice(0, 10);
+                    const day = toLocalDateKey(t);
                     coffeeCountByDay.set(day, (coffeeCountByDay.get(day) ?? 0) + 1);
                   });
                   return (
@@ -985,7 +986,7 @@ export default function HrvAnalysisChart({
                           const x = xScale(d);
                           if (x < 0 || x > innerWidth) return null;
                           const cy = jitteredLaneY(`coffee-${t}-${ti}`, laneY, laneHeight, 9);
-                          const isOverLimit = (coffeeCountByDay.get(t.slice(0, 10)) ?? 0) >= 2;
+                          const isOverLimit = (coffeeCountByDay.get(toLocalDateKey(t)) ?? 0) >= 2;
                           return (
                             <CoffeeIcon
                               key={ti}

@@ -32,6 +32,7 @@ import {
 import { MOOD_OPTIONS } from "./forms/MoodForm";
 import { EVENT_TYPE_LABELS } from "./forms/EventForm";
 import { useMedicationLogList } from "@/features/medicine/queries/useMedications";
+import { toLocalDateKey } from "@/features/shared/lib/date";
 
 function getMoodOption(score: number) {
   return MOOD_OPTIONS.find((o) => o.score === score);
@@ -336,7 +337,7 @@ export default function Calendar() {
   const hrvByDate = useMemo(() => {
     const map = new Map<string, HrvRecord[]>();
     hrvList?.forEach((r) => {
-      const key = r.examinedAt.slice(0, 10);
+      const key = toLocalDateKey(r.examinedAt);
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(r);
     });
@@ -356,7 +357,7 @@ export default function Calendar() {
   const coffeeByDate = useMemo(() => {
     const map = new Map<string, CoffeeRecord[]>();
     coffeeList?.forEach((r) => {
-      const key = r.date.slice(0, 10);
+      const key = toLocalDateKey(r.date);
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(r);
     });
@@ -376,7 +377,7 @@ export default function Calendar() {
   const eventByDate = useMemo(() => {
     const map = new Map<string, EventRecord[]>();
     eventList?.forEach((r) => {
-      const key = r.date.slice(0, 10);
+      const key = toLocalDateKey(r.date);
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(r);
     });
