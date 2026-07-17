@@ -2,7 +2,7 @@
 
 import styled, { keyframes } from "styled-components";
 
-
+const SIZE= 80;
 
 interface Props {
   /** 로딩 표시가 채울 영역 높이(px). 실제 차트 높이와 맞춰 레이아웃이 안 흔들리게 함 */
@@ -67,15 +67,15 @@ position: relative;
   align-items: center;
   
   &::before {
-    width:160px;
-    height:160px;
+    width:${SIZE}px;
+    height:${SIZE}px;
     background-image: radial-gradient(circle at center, rgba(255, 63, 144, 0.35), rgba(255, 63, 144, 0) 70%);
     border-radius: 50%;
     position: absolute;
     content: '';
 
-    top: calc(50% - 80px);
-    left:  calc(50% - 80px);
+    top: calc(50% - ${SIZE/2}px);
+    left:  calc(50% - ${SIZE/2}px);
     animation: ${circle} 1s ease-in-out infinite;
   }
 `
