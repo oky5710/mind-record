@@ -7,6 +7,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 # Mind Profiler
 ## 정신건강을 기록하는 앱
 
+제품 개요/기능/화면 목록은 [PRD.md](./PRD.md) 참고.
+
 ## 기본 모바일 대응 화면
 
 ## 기술 스택
@@ -166,15 +168,9 @@ React Hook Form(`useForm`) 사용.
 
 ## 차트 (차트보기, 심박변이 분석 등)
 
-* 차트 라이브러리 없이 **d3 + 순수 SVG**로 직접 구현 (`features/chart/components/charts/`, `features/hrv-analysis/components/`)
-* 커스텀 컴포넌트는 styled-components 사용, 레이아웃/버튼류는 Tailwind
-* 가로 스크롤 차트 공통 패턴:
-  * `ScrollContainer`(`overflow-x: auto`, 스크롤바 숨김) + pointer 이벤트로 드래그 스크롤 구현 (터치는 브라우저 기본 스크롤에 맡기고 `pointerType !== "mouse"`면 드래그 핸들러는 무시)
-  * **주의**: `pointerdown`에서 곧바로 `setPointerCapture`를 호출하면, 스펙상 그 뒤에 오는 `click` 이벤트가 실제 클릭 대상이 아니라 캡처한 엘리먼트로 리다이렉트됨 → 차트 안의 클릭 가능한 요소(원형 마커 등)가 클릭이 안 먹는 버그로 이어짐. 포인터가 일정 거리(예: 4px) 이상 움직였을 때만 `setPointerCapture`를 호출해서 "드래그"와 "클릭"을 구분할 것
-  * y축처럼 값이 가로 스크롤과 무관한 축은 `position: sticky`로 처리해서 별도 여백을 차지하지 않으면서 항상 왼쪽에 보이게 함 (`height: 0`인 절대위치 행으로 y좌표를 잡고, 그 안의 라벨에 `position: sticky; left: Npx`)
-  * x축 라벨이 겹칠 때는 자동으로 생략: `getBBox()`로 실제 렌더링된 텍스트 폭을 측정해서 겹치는지 판단. **단, `getBBox()`는 해당 `.tick`의 `<g transform="translate(x,0)">` 기준 로컬 좌표를 반환**하므로 반드시 `xScale(d)`를 더해 절대 좌표로 변환해야 함 (안 하면 모든 틱이 원점 근처 좌표라 서로 겹치는 것으로 오판되어 대부분이 숨겨짐)
-  * 워치 미착용 등으로 샘플 간격이 비정상적으로 크면(예: 정상 간격의 3배 이상) `d3.line().defined()`로 그 구간의 선을 끊어서 이어붙이지 않음
-  * 페이지 로드 시 최신 데이터가 보이도록 스크롤을 오른쪽 끝으로 자동 이동. 확대해서(시간 단위 등) 볼 때는 `windowDays` 같은 옵션으로 최근 구간만 필터링해서 렌더링 — 전체 기간을 다 그리면 틱/포인트 DOM 개수가 과도하게 많아짐
+차트 라이브러리 없이 **d3 + 순수 SVG**로 직접 구현 (`features/chart/components/charts/`, `features/hrv-analysis/components/`). 커스텀 컴포넌트는 styled-components, 레이아웃/버튼류는 Tailwind.
+
+구현 패턴(드래그/클릭 구분, sticky 축, 라벨 겹침 처리 등)과 주의사항은 스킬 `d3-svg-charts` 참고.
 
 ## 웨어러블 데이터 모델 (백엔드)
 
@@ -184,11 +180,9 @@ React Hook Form(`useForm`) 사용.
 
 ## 인증 (Google 로그인)
 
-* **프론트**: NextAuth.js(Auth.js v5) — `auth.ts`(루트)에 Google Provider 설정. 로그인 안 한 상태로 접근하면 `middleware.ts`가 `/login`으로 리다이렉트 (`/login`, `/api/auth/*`는 예외)
-* **브릿지**: NextAuth의 `jwt` 콜백에서 최초 로그인 시 Google이 내려준 `account.id_token`을 백엔드 `POST /auth/google`에 전달 → 백엔드가 `google-auth-library`로 idToken을 직접 검증하고(공유 비밀키 방식이 아님), 기존 `AuthService`가 이메일/비밀번호 로그인 때 쓰던 것과 동일한 형식의 JWT(`{ sub, email }`)를 발급 → 이 토큰을 `session.backendToken`에 실어 프론트로 전달
-* **API 호출**: 프론트의 모든 쿼리 훅은 `features/shared/lib/authFetch.ts`의 `useAuthedFetch()`로 `Authorization: Bearer <backendToken>` 헤더를 붙여서 호출 (새 쿼리 파일을 추가할 때도 반드시 이 훅을 통해서 fetch할 것). `useQuery`는 `enabled: isReady && !!token`으로 토큰이 준비되기 전에는 요청하지 않도록 함
-* **백엔드**: `JwtAuthGuard`가 `APP_GUARD`로 전역 등록되어 있어 기본적으로 모든 라우트가 인증 필요. 예외는 `@Public()` 데코레이터로 표시 (`auth/register`, `auth/login`, `auth/google`, 그리고 공용 참조 데이터인 `DrugController` 전체). 컨트롤러에서 로그인한 사용자 정보는 `@CurrentUser() user: CurrentUserPayload`로 꺼내 씀 (`src/auth/current-user.decorator.ts`)
-* 새 리소스(모델)를 추가할 때는 반드시 `userId` 필드를 넣고, 서비스의 조회/생성 로직에 `@CurrentUser()`로 받은 `user.id`를 스코프로 사용할 것 — 이걸 빠뜨리면 다른 사용자의 데이터가 섞여 보임
+NextAuth(프론트) ↔ 백엔드 자체 JWT 발급을 브릿지하는 구조. **새 리소스(모델)를 추가할 때는 반드시 `userId` 필드를 넣고, 서비스의 조회/생성/수정/삭제 로직에서 `@CurrentUser()`로 받은 `user.id`로 스코프할 것** — 이걸 빠뜨리면 다른 사용자의 데이터가 섞여 보임.
+
+아키텍처 세부사항(NextAuth↔백엔드 JWT 브릿지, `@Public()`/`@CurrentUser()` 패턴, 단축어용 장기 토큰)은 스킬 `backend-auth-architecture` 참고.
 
 ## 규칙
 
