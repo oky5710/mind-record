@@ -3,40 +3,19 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import EntryModal from "./EntryModal";
-import BottomSheet from "@/features/shared/components/BottomSheet";
 import HrvDetailSheet from "./HrvDetailSheet";
-import ExerciseForm, { type ExerciseFormData } from "./forms/ExerciseForm";
-import CoffeeForm, { type CoffeeFormData } from "./forms/CoffeeForm";
-import MoodForm, { type MoodFormData } from "./forms/MoodForm";
-import EventForm, { type EventFormData } from "./forms/EventForm";
+import CoffeeDetailSheet from "./CoffeeDetailSheet";
+import ExerciseDetailSheet from "./ExerciseDetailSheet";
+import EventDetailSheet from "./EventDetailSheet";
+import MoodDetailSheet from "./MoodDetailSheet";
 import { useHrvList, type HrvRecord } from "@/features/calendar/queries/useHrv";
-import {
-  useExerciseList,
-  useUpdateExercise,
-  useRemoveExercise,
-  type ExerciseRecord,
-} from "@/features/calendar/queries/useExercise";
-import {
-  useCoffeeList,
-  useUpdateCoffee,
-  useRemoveCoffee,
-  type CoffeeRecord,
-} from "@/features/calendar/queries/useCoffee";
-import { useMoodList, useUpdateMood, useRemoveMood, type MoodRecord } from "@/features/calendar/queries/useMood";
-import {
-  useEventList,
-  useUpdateEvent,
-  useRemoveEvent,
-  type EventRecord,
-} from "@/features/calendar/queries/useEvents";
-import { MOOD_OPTIONS } from "./forms/MoodForm";
-import { EVENT_TYPE_LABELS } from "./forms/EventForm";
+import { useExerciseList, type ExerciseRecord } from "@/features/calendar/queries/useExercise";
+import { useCoffeeList, type CoffeeRecord } from "@/features/calendar/queries/useCoffee";
+import { useMoodList, type MoodRecord } from "@/features/calendar/queries/useMood";
+import { useEventList, type EventRecord } from "@/features/calendar/queries/useEvents";
+import { getMoodOption } from "./forms/MoodForm";
 import { useMedicationLogList } from "@/features/medicine/queries/useMedications";
-import { toLocalDateKey } from "@/features/shared/lib/date";
-
-function getMoodOption(score: number) {
-  return MOOD_OPTIONS.find((o) => o.score === score);
-}
+import { groupByLocalDate, dayKey, getRecordsForDay } from "@/features/calendar/lib/groupByDate";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -46,274 +25,6 @@ function getDaysInMonth(year: number, month: number) {
 
 function getFirstDayOfMonth(year: number, month: number) {
   return new Date(year, month, 1).getDay();
-}
-
-function CoffeeDetailSheet({ record, onClose }: { record: CoffeeRecord; onClose: () => void }) {
-  const [editing, setEditing] = useState(false);
-  const { mutateAsync: updateCoffee, isPending, error } = useUpdateCoffee();
-  const { mutateAsync: removeCoffee, isPending: removing } = useRemoveCoffee();
-
-  const date = new Date(record.date);
-  const dateLabel = `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}`;
-  const timeLabel = `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
-
-  async function handleUpdate(data: CoffeeFormData) {
-    const type = data.coffeeType === "직접입력" ? data.customType : data.coffeeType;
-    const [hours, minutes] = data.time.split(":").map(Number);
-    const dateObj = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours, minutes);
-    await updateCoffee({
-      id: record.id,
-      payload: { date: dateObj.toISOString(), type, memo: data.memo },
-    });
-    onClose();
-  }
-
-  async function handleDelete() {
-    if (!window.confirm("이 커피 기록을 삭제할까요?")) return;
-    await removeCoffee(record.id);
-    onClose();
-  }
-
-  if (editing) {
-    return (
-      <BottomSheet open onOpenChange={(v) => !v && onClose()} title={`커피 수정 — ${dateLabel}`} onBack={() => setEditing(false)}>
-        <div className="pt-4">
-          <CoffeeForm
-            defaultValues={{ type: record.type, time: timeLabel, memo: record.memo }}
-            onSubmit={handleUpdate}
-            onCancel={() => setEditing(false)}
-            isPending={isPending}
-            error={error?.message ?? null}
-          />
-        </div>
-      </BottomSheet>
-    );
-  }
-
-  return (
-    <BottomSheet open onOpenChange={(v) => !v && onClose()} title={`커피 — ${dateLabel}`}>
-      <div className="pt-4 flex flex-col gap-1">
-        {[
-          { label: "종류", value: record.type },
-          { label: "시간", value: timeLabel },
-          { label: "메모", value: record.memo },
-        ]
-          .filter(({ value }) => value !== undefined)
-          .map(({ label, value }) => (
-            <div key={label} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
-              <span className="text-sm text-muted-foreground">{label}</span>
-              <span className="text-sm font-medium">{value}</span>
-            </div>
-          ))}
-        <div className="flex gap-2 pt-4">
-          <Button variant="outline" className="flex-1" onClick={() => setEditing(true)}>
-            수정
-          </Button>
-          <Button variant="outline" className="flex-1 text-destructive" onClick={handleDelete} disabled={removing}>
-            {removing ? "삭제 중..." : "삭제"}
-          </Button>
-        </div>
-      </div>
-    </BottomSheet>
-  );
-}
-
-function ExerciseDetailSheet({ record, onClose }: { record: ExerciseRecord; onClose: () => void }) {
-  const [editing, setEditing] = useState(false);
-  const { mutateAsync: updateExercise, isPending, error } = useUpdateExercise();
-  const { mutateAsync: removeExercise, isPending: removing } = useRemoveExercise();
-
-  const date = new Date(record.date);
-  const dateLabel = `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}`;
-  const intensityLabels = ["", "매우 쉬움", "쉬움", "보통", "힘듦", "매우 힘듦"];
-
-  async function handleUpdate(data: ExerciseFormData) {
-    const type = data.exerciseType === "직접입력" ? data.customTitle : data.exerciseType;
-    await updateExercise({
-      id: record.id,
-      payload: { type, durationMinutes: data.durationMinutes, intensity: data.intensity },
-    });
-    onClose();
-  }
-
-  async function handleDelete() {
-    if (!window.confirm("이 운동 기록을 삭제할까요?")) return;
-    await removeExercise(record.id);
-    onClose();
-  }
-
-  if (editing) {
-    return (
-      <BottomSheet open onOpenChange={(v) => !v && onClose()} title={`운동 수정 — ${dateLabel}`} onBack={() => setEditing(false)}>
-        <div className="pt-4">
-          <ExerciseForm
-            defaultValues={{ type: record.type, durationMinutes: record.durationMinutes, intensity: record.intensity }}
-            onSubmit={handleUpdate}
-            onCancel={() => setEditing(false)}
-            isPending={isPending}
-            error={error?.message ?? null}
-          />
-        </div>
-      </BottomSheet>
-    );
-  }
-
-  return (
-    <BottomSheet open onOpenChange={(v) => !v && onClose()} title={`운동 — ${dateLabel}`}>
-      <div className="pt-4 flex flex-col gap-1">
-        {[
-          { label: "종류", value: record.type },
-          { label: "시간", value: `${record.durationMinutes}분` },
-          record.intensity != null
-            ? { label: "강도", value: `${record.intensity} (${intensityLabels[record.intensity]})` }
-            : undefined,
-        ]
-          .filter((row) => row !== undefined)
-          .map(({ label, value }) => (
-          <div key={label} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
-            <span className="text-sm text-muted-foreground">{label}</span>
-            <span className="text-sm font-medium">{value}</span>
-          </div>
-        ))}
-        <div className="flex gap-2 pt-4">
-          <Button variant="outline" className="flex-1" onClick={() => setEditing(true)}>
-            수정
-          </Button>
-          <Button variant="outline" className="flex-1 text-destructive" onClick={handleDelete} disabled={removing}>
-            {removing ? "삭제 중..." : "삭제"}
-          </Button>
-        </div>
-      </div>
-    </BottomSheet>
-  );
-}
-
-function EventDetailSheet({ record, onClose }: { record: EventRecord; onClose: () => void }) {
-  const [editing, setEditing] = useState(false);
-  const { mutateAsync: updateEvent, isPending, error } = useUpdateEvent();
-  const { mutateAsync: removeEvent, isPending: removing } = useRemoveEvent();
-
-  const date = new Date(record.date);
-  const dateLabel = `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}`;
-  const timeLabel = `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
-
-  async function handleUpdate(data: EventFormData) {
-    const [hours, minutes] = data.time.split(":").map(Number);
-    const dateObj = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours, minutes);
-    const title = data.type === "OTHER" ? data.customTitle : EVENT_TYPE_LABELS[data.type];
-    await updateEvent({
-      id: record.id,
-      payload: { date: dateObj.toISOString(), type: data.type, title, description: data.description },
-    });
-    onClose();
-  }
-
-  async function handleDelete() {
-    if (!window.confirm("이 이벤트 기록을 삭제할까요?")) return;
-    await removeEvent(record.id);
-    onClose();
-  }
-
-  if (editing) {
-    return (
-      <BottomSheet open onOpenChange={(v) => !v && onClose()} title={`이벤트 수정 — ${dateLabel}`} onBack={() => setEditing(false)}>
-        <div className="pt-4">
-          <EventForm
-            defaultValues={{ type: record.type, title: record.title, description: record.description, time: timeLabel }}
-            onSubmit={handleUpdate}
-            onCancel={() => setEditing(false)}
-            isPending={isPending}
-            error={error?.message ?? null}
-          />
-        </div>
-      </BottomSheet>
-    );
-  }
-
-  return (
-    <BottomSheet open onOpenChange={(v) => !v && onClose()} title={`이벤트 — ${dateLabel}`}>
-      <div className="pt-4 flex flex-col gap-1">
-        {[
-          { label: "유형", value: EVENT_TYPE_LABELS[record.type] },
-          { label: "제목", value: record.title },
-          { label: "시간", value: timeLabel },
-          { label: "설명", value: record.description },
-        ]
-          .filter(({ value }) => value !== undefined)
-          .map(({ label, value }) => (
-            <div key={label} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
-              <span className="text-sm text-muted-foreground">{label}</span>
-              <span className="text-sm font-medium">{value}</span>
-            </div>
-          ))}
-        <div className="flex gap-2 pt-4">
-          <Button variant="outline" className="flex-1" onClick={() => setEditing(true)}>
-            수정
-          </Button>
-          <Button variant="outline" className="flex-1 text-destructive" onClick={handleDelete} disabled={removing}>
-            {removing ? "삭제 중..." : "삭제"}
-          </Button>
-        </div>
-      </div>
-    </BottomSheet>
-  );
-}
-
-function MoodDetailSheet({ record, onClose }: { record: MoodRecord; onClose: () => void }) {
-  const [editing, setEditing] = useState(false);
-  const { mutateAsync: updateMood, isPending, error } = useUpdateMood();
-  const { mutateAsync: removeMood, isPending: removing } = useRemoveMood();
-
-  const date = new Date(record.date);
-  const dateLabel = `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}`;
-
-  async function handleUpdate(data: MoodFormData) {
-    await updateMood({ id: record.id, payload: { score: data.score } });
-    onClose();
-  }
-
-  async function handleDelete() {
-    if (!window.confirm("이 기분 기록을 삭제할까요?")) return;
-    await removeMood(record.id);
-    onClose();
-  }
-
-  if (editing) {
-    return (
-      <BottomSheet open onOpenChange={(v) => !v && onClose()} title={`기분 수정 — ${dateLabel}`} onBack={() => setEditing(false)}>
-        <div className="pt-4">
-          <MoodForm
-            defaultValues={{ score: record.score }}
-            onSubmit={handleUpdate}
-            onCancel={() => setEditing(false)}
-            isPending={isPending}
-            error={error?.message ?? null}
-          />
-        </div>
-      </BottomSheet>
-    );
-  }
-
-  const option = getMoodOption(record.score);
-
-  return (
-    <BottomSheet open onOpenChange={(v) => !v && onClose()} title={`기분 — ${dateLabel}`}>
-      <div className="pt-4 flex flex-col gap-1">
-        <div className="flex items-center justify-between py-2 border-b border-border/50">
-          <span className="text-sm text-muted-foreground">기분</span>
-          <span className="text-sm font-medium">{option ? `${option.icon} ${option.label}` : record.score}</span>
-        </div>
-        <div className="flex gap-2 pt-4">
-          <Button variant="outline" className="flex-1" onClick={() => setEditing(true)}>
-            수정
-          </Button>
-          <Button variant="outline" className="flex-1 text-destructive" onClick={handleDelete} disabled={removing}>
-            {removing ? "삭제 중..." : "삭제"}
-          </Button>
-        </div>
-      </div>
-    </BottomSheet>
-  );
 }
 
 export default function Calendar() {
@@ -334,55 +45,11 @@ export default function Calendar() {
   const { data: eventList } = useEventList();
   const { data: medicationLogList } = useMedicationLogList();
 
-  const hrvByDate = useMemo(() => {
-    const map = new Map<string, HrvRecord[]>();
-    hrvList?.forEach((r) => {
-      const key = toLocalDateKey(r.examinedAt);
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(r);
-    });
-    return map;
-  }, [hrvList]);
-
-  const exerciseByDate = useMemo(() => {
-    const map = new Map<string, ExerciseRecord[]>();
-    exerciseList?.forEach((r) => {
-      const key = r.date.slice(0, 10);
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(r);
-    });
-    return map;
-  }, [exerciseList]);
-
-  const coffeeByDate = useMemo(() => {
-    const map = new Map<string, CoffeeRecord[]>();
-    coffeeList?.forEach((r) => {
-      const key = toLocalDateKey(r.date);
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(r);
-    });
-    return map;
-  }, [coffeeList]);
-
-  const moodByDate = useMemo(() => {
-    const map = new Map<string, MoodRecord[]>();
-    moodList?.forEach((r) => {
-      const key = r.date.slice(0, 10);
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(r);
-    });
-    return map;
-  }, [moodList]);
-
-  const eventByDate = useMemo(() => {
-    const map = new Map<string, EventRecord[]>();
-    eventList?.forEach((r) => {
-      const key = toLocalDateKey(r.date);
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(r);
-    });
-    return map;
-  }, [eventList]);
+  const hrvByDate = useMemo(() => groupByLocalDate(hrvList, (r) => r.examinedAt), [hrvList]);
+  const exerciseByDate = useMemo(() => groupByLocalDate(exerciseList, (r) => r.date), [exerciseList]);
+  const coffeeByDate = useMemo(() => groupByLocalDate(coffeeList, (r) => r.date), [coffeeList]);
+  const moodByDate = useMemo(() => groupByLocalDate(moodList, (r) => r.date), [moodList]);
+  const eventByDate = useMemo(() => groupByLocalDate(eventList, (r) => r.date), [eventList]);
 
   const medicationChecksByDate = useMemo(() => {
     const map = new Map<string, { morning: boolean; bedtime: boolean }>();
@@ -397,34 +64,8 @@ export default function Calendar() {
     return map;
   }, [medicationLogList]);
 
-  function getHrvForDay(day: number): HrvRecord[] {
-    const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    return hrvByDate.get(key) ?? [];
-  }
-
-  function getExercisesForDay(day: number): ExerciseRecord[] {
-    const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    return exerciseByDate.get(key) ?? [];
-  }
-
-  function getCoffeesForDay(day: number): CoffeeRecord[] {
-    const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    return coffeeByDate.get(key) ?? [];
-  }
-
-  function getMoodsForDay(day: number): MoodRecord[] {
-    const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    return moodByDate.get(key) ?? [];
-  }
-
-  function getEventsForDay(day: number): EventRecord[] {
-    const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    return eventByDate.get(key) ?? [];
-  }
-
   function getMedicationChecksForDay(day: number): { morning: boolean; bedtime: boolean } {
-    const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    return medicationChecksByDate.get(key) ?? { morning: false, bedtime: false };
+    return medicationChecksByDate.get(dayKey(year, month, day)) ?? { morning: false, bedtime: false };
   }
 
   const daysInMonth = getDaysInMonth(year, month);
@@ -484,11 +125,11 @@ export default function Calendar() {
         {weeks.map((week, wi) => (
           <div key={wi} className="grid grid-cols-7 border-b border-border/50">
             {week.map((day, di) => {
-              const hrvRecords = day !== null ? getHrvForDay(day) : [];
-              const exerciseRecords = day !== null ? getExercisesForDay(day) : [];
-              const coffeeRecords = day !== null ? getCoffeesForDay(day) : [];
-              const moodRecords = day !== null ? getMoodsForDay(day) : [];
-              const eventRecords = day !== null ? getEventsForDay(day) : [];
+              const hrvRecords = day !== null ? getRecordsForDay(hrvByDate, year, month, day) : [];
+              const exerciseRecords = day !== null ? getRecordsForDay(exerciseByDate, year, month, day) : [];
+              const coffeeRecords = day !== null ? getRecordsForDay(coffeeByDate, year, month, day) : [];
+              const moodRecords = day !== null ? getRecordsForDay(moodByDate, year, month, day) : [];
+              const eventRecords = day !== null ? getRecordsForDay(eventByDate, year, month, day) : [];
               const medicationChecks = day !== null ? getMedicationChecksForDay(day) : { morning: false, bedtime: false };
               return (
                 <div

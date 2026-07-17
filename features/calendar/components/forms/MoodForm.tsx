@@ -10,6 +10,10 @@ export const MOOD_OPTIONS = [
   { score: 5, icon: "😄", label: "매우 좋음" },
 ];
 
+export function getMoodOption(score: number) {
+  return MOOD_OPTIONS.find((o) => o.score === score);
+}
+
 export interface MoodFormData {
   score: number;
 }

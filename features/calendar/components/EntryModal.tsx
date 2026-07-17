@@ -47,6 +47,10 @@ function buildHrvPayload(data: ExamFormData): HrvPayload {
   };
 }
 
+function toDateStr(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 export default function EntryModal({ date, onClose }: Props) {
   const [selected, setSelected] = useState<EntryType | null>(null);
   const { mutateAsync, isPending, error } = useCreateHrv();
@@ -67,9 +71,8 @@ export default function EntryModal({ date, onClose }: Props) {
 
   async function handleExerciseSubmit(data: ExerciseFormData) {
     const type = data.exerciseType === "직접입력" ? data.customTitle : data.exerciseType;
-    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
     await createExercise({
-      date: dateStr,
+      date: toDateStr(date),
       type,
       durationMinutes: data.durationMinutes,
       intensity: data.intensity,
@@ -78,8 +81,7 @@ export default function EntryModal({ date, onClose }: Props) {
   }
 
   async function handleMoodSubmit(data: MoodFormData) {
-    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-    await createMood({ date: dateStr, score: data.score });
+    await createMood({ date: toDateStr(date), score: data.score });
     onClose();
   }
 
@@ -109,7 +111,7 @@ export default function EntryModal({ date, onClose }: Props) {
   }
 
   async function handleMedicationSubmit(data: MedicationFormData) {
-    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    const dateStr = toDateStr(date);
     await Promise.all(data.timings.map((timing) => logMedicationTiming({ timing, date: dateStr })));
     onClose();
   }
